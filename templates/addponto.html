@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+
+<body>
+    <div id="AddPoint" style="height: 15%;">
+        <h1>Adincionar ponto</h1>
+        <ol>
+	        <form id="markerForm">
+		        <label for="nome">Nome</label>
+                <input type="text" id="nome" name="nome" required>
+
+                <label for="lat">Latitude:</label>
+                <input type="text" id="lat" name="lat" required>
+
+                <label for="lon">Longitude:</label>
+                <input type="text" id="lon" name="lon" required>
+
+                <label>Radio</label>
+                <input type="text" name="radio">
+
+                <label for="h">Altura da Antena</label>
+                <input type="text" id="h" name="h" required>
+
+
+                <button type="button" onclick="addMarker()">Adicionar Marcador</button>
+	        </form>
+        </ol>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Função para adicionar marcador
+        function addMarker(lat, lon) {
+            var formData = new FormData(document.getElementById('markerForm'));
+            if (lat && lon) {
+                formData.set('lat', lat);
+                formData.set('lon', lon);
+            }
+
+            fetch('/add_marker', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.result === 'success') {
+                    // Atualiza a página para exibir o novo marcador
+                    location.reload();
+                } else {
+                    alert('Falha ao adicionar marcador.');
+                }
+            });
+        }
+    </script>
+
+
+</body>
+{% endblock conteudo%}

@@ -1,0 +1,22 @@
+IpP- istituto perreira passos, dados geograficos
+
+
+ESA WorldCover 10m v100 - gee
+
+Open Buildings V3 Polygons
+
+ALOS DSM: Global 30m v3.2
+
+
+GCOM-C/SGLI L3 Leaf Area Index (V3)
+
+GCOM-C/SGLI L3 Land Surface Temperature (V3)
+
+
+EC JRC global map of forest cover 2020, V1
+
+MOD09GQ.061 Terra Surface Reflectance Daily Global 250m
+
+MOD13A1.061 Terra Vegetation Indices 16-Day Global 500m
+
+NASADEM: NASA NASADEM Digital Elevation 30m

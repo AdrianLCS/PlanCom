@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interativo</title>
+    <!-- Inclua a biblioteca Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_fca6d3b51429d5da2b9a6282bdddf4d2 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+</head>
+<body>
+    <h1>Mapa OpenStreetMap Interativo com Perfil de Elevação</h1>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        {{ form.latitude1.label }} {{ form.latitude1 }} {{ form.longitude1.label }} {{ form.longitude1 }} <br>
+        {{ form.latitude2.label }} {{ form.latitude2 }} {{ form.longitude2.label }} {{ form.longitude2 }} <br>
+        {{ form.submit }}
+    </form>
+
+    {% if coordenadas %}
+        <div id="map" style="height: 500px;"></div>
+        <div id="elevationChart" style="height: 300px;"></div>
+        <script>
+            var lat1 = {{ coordenadas.lat1 }};
+            var lon1 = {{ coordenadas.lon1 }};
+            var lat2 = {{ coordenadas.lat2 }};
+            var lon2 = {{ coordenadas.lon2 }};
+            var elevations = {{ coordenadas.elevations | safe }};
+
+            var map = L.map('map').setView([lat1, lon1], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            L.marker([lat1, lon1]).addTo(map);
+            L.marker([lat2, lon2]).addTo(map);
+
+            var line = L.polyline([[lat1, lon1], [lat2, lon2]], { color: 'red' }).addTo(map);
+
+            var elevationChart = Highcharts.chart('elevationChart', {
+                chart: {
+                    type: 'area',
+                    zoomType: 'x'
+                },
+                title: {
+                    text: 'Perfil de Elevação'
+                },
+                xAxis: {
+                    title: {
+                        text: 'Distância (metros)'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Elevação (metros)'
+                    }
+                },
+                series: [{
+                    name: 'Perfil de Elevação',
+                    data: elevations
+                }]
+            });
+        </script>
+    {% endif %}
+</body>
+</html>

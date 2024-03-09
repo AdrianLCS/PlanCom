@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+<body>
+    <div id="map" style="margin-top: 45px;">
+        {% block content %}
+        {% include map_file %}
+        {% endblock %}
+    </div>
+</body>
+{% endblock conteudo%}

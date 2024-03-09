@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+
+<body>
+    <div id="AddPoint" style="height: 15%;">
+        <h2 style="text-align: center;">Predicão em Área</h2>
+    <ol>
+        <form action="{{url_for('area')}}" method="post">
+            <label for="ponto">Ponto</label>
+            <input type="text" id="ponto" name="ponto" required>
+
+            <label for="raio">Raio</label>
+            <input type="text" id="raio" name="raio" required>
+
+            <label for="f">Frequência</label>
+            <input type="text" id="f" name="f" required>
+
+            <button>Calcular perda</button>
+        </form>
+    </ol>
+    </div>
+
+</body>
+{% endblock conteudo%}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenStreetMap with Flask and Leaflet</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <form id="markerForm">
+        <label for="lat">Latitude:</label>
+        <input type="text" id="lat" name="lat" required>
+
+        <input type="text" id="lon" name="lon" required>
+
+        <button type="button" onclick="addMarker()">Adicionar Marcador</button>
+    </form>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Adiciona marcadores existentes
+        var markers = {{ markers|tojson }};
+        markers.forEach(function(marker) {
+            L.marker([marker.lat, marker.lon]).addTo(map);
+        });
+
+        // Adiciona marcador ao clicar no mapa
+        map.on('click', function(e) {
+            var latlng = e.latlng;
+            addMarker(latlng.lat, latlng.lng);
+        });
+
+        // Função para adicionar marcador
+        function addMarker(lat, lon) {
+            var formData = new FormData(document.getElementById('markerForm'));
+            if (lat && lon) {
+                formData.set('lat', lat);
+                formData.set('lon', lon);
+            }
+
+            fetch('/add_marker', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.result === 'success') {
+                    // Atualiza a página para exibir o novo marcador
+                    location.reload();
+                } else {
+                    alert('Falha ao adicionar marcador.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
