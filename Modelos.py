@@ -3,16 +3,19 @@ import math
 
 c = 299792458  # m/s
 
+def raio_fresnel(n, d1, d2, f):
+    # f em Mhertz
+    return (n * (c / (f*1000000)) * d1 * d2 / (d1 + d2)) ** 0.5
 
-def atenuaca_vegetacao_antiga_ITU(f,d):  #F em GHz e d em metros
-    L= 0.2*(f**0.3)*(d**0.6)
-    return L # L em dB
+def atenuaca_vegetacao_antiga_ITU(f, d):  # F em GHz e d em metros
+    L = 0.2 * (f ** 0.3) * (d ** 0.6)
+    return L  # L em dB
 
 
 def friis_free_space_loss_db(f, d):  # gt=direcionalidade*eficiencia
-    comprimento_de_onda=c/(f*1000000)
+    comprimento_de_onda = c / (f * 1000000)
     L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
-    return L_db # Esse valor é de fato uma perda
+    return L_db  # Esse valor é de fato uma perda
 
 
 def dhs(s, Dh):
@@ -37,7 +40,7 @@ def ak(v1, v2):
 
 
 def vj(teta, k, dlj, s, dl):
-    return (teta / 2) * ((k / np.pi) * ((dlj * (s - dl)) / (s - dl - dlj)))
+    return (teta / 2) * (((k / np.pi) * ((dlj * (s - dl)) / (s - dl + dlj))) ** 0.5)
 
 
 def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar):
@@ -54,12 +57,12 @@ def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar):
 
 
 def Yj(hej, dlj):
-    valor=max(1e-12, (2 * hej) / (dlj ** 2))
+    valor = max(1e-12, (2 * hej) / (dlj ** 2))
     return valor
 
 
 def alphaj(k, Yj):
-    valor=(k / Yj)** (1 / 3)
+    valor = (k / Yj) ** (1 / 3)
     return valor
 
 
@@ -217,12 +220,6 @@ def difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg,
         K0, K1, K2 = kj(alpha0, Zg), kj(alpha1, Zg), kj(alpha2, Zg)
         x1, x2 = xj(alpha1, Y1, dl1, K1), xj(alpha2, Y2, dl2, K2)
         x0 = x(alpha0, K0, teta, x1, x2)
-        if x0<0:
-            print('x0')
-        if x1 < 0:
-            print('x1')
-        if x2<0:
-            print('x2')
         Ar = g(x0) - f(x1, K1) - f(x2, K2) + c1(K0)
     else:
         Ar = 0
@@ -324,7 +321,6 @@ def urbam_factor(d, f):  # f em MHz e d em Km
     return 16.5 + 10 * np.log10(f / 100) - 0.12 * d
 
 
-
 def atenuaco_por_icertezas_sitacao(qs, he1, he2, k, d, yt):
     # qs de 0 a 9 sendo que 0 representa 100% e 1 a 9 representa de 10 a 90 %
     tabela_z = [-4, 1.18, 0.84, 0.52, 0.25, 0, -0.25, -0.52, -0.84, -1.18]
@@ -347,19 +343,18 @@ def atenuaco_por_icertezas_sitacao(qs, he1, he2, k, d, yt):
     return ys
 
 
-def longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
-                      teta1, teta2, polarizacao='v'):  # de 20M a 20 GHz, f em MHz
+def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
+                      teta1, teta2, polarizacao='v', simplificado=0):  # de 20M a 20 GHz, f em MHz
     # Constantes Gerais #
     # d em metros -> conferir
     s = d
     f0 = 47.7  # em MHz.m
     k = f / f0
     K = 4 / 3
-    # N0 = 320  # padaro para continenteal sub-tropical
-    # z1 = 9460
-    # N1 = 179.3
-    # Ns = N0*np.exp(achar_zs(elevacao)/z1)
-    Ns = 301
+    N0 = 320  # padaro para continenteal sub-tropical
+    z1 = 9460
+    N1 = 179.3
+    Ns = N0*np.exp(-h0/z1)
     Ya = 157e-9  # 1/raio
     sigma = 0.005  # S/m
     er = 15
@@ -369,9 +364,7 @@ def longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
         Zg = ((erlinha - 1) ** 0.5) / erlinha
     else:
         Zg = (erlinha - 1) ** 0.5
-
-    # Ye = Ya*(1-0.04555*np.exp(Ns/N1))  # curvatura efetiva da terra em m^-1
-    Ye = Ya / K  # curvatura efetiva da terra em m^-1
+    Ye = Ya*(1-0.04555*np.exp(Ns/N1))  # curvatura efetiva da terra em m^-1
     dls1 = (2 * he1 / Ye) ** 0.5
     dls2 = (2 * he2 / Ye) ** 0.5
     dls = dls1 + dls2
@@ -388,20 +381,32 @@ def longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
     dl = dl1 + dl2
 
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
-
+    tetae = max((teta1 + teta2), dl * Ye)
     Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)
-    if d <= dls:
-        Aref = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
-    elif (d > dls) and (d <= dx):
-        Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)[0]
+
+    if simplificado:
+        if d <= dls:
+            Aref = 20 * np.log10(1 + (dl * Dh / he1 * he2))
+        elif (d > dls) and (d <= dx):
+            a = 6370 / (1 - 0.04665 * np.exp(0.005577 * Ns))
+            Aref = (1 + 0.45 * ((Dh / (c / f)) ** 0.5) * ((a * tetae + dl / d) ** 0.5))
+        else:
+            H0 = 1 / (he1 * he2 * tetae * f * abs(0.007 - 0.058 * tetae))
+            Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)
     else:
-        Aref = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)[0]
+        if d <= dls:
+            Aref = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+        elif (d > dls) and (d <= dx):
+            Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)[0]
+        else:
+            Aref = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)[0]
 
     yts = atenuaco_por_icertezas_sitacao(qs, he1, he2, k, d, yt)
 
-    variabilidade_da_situacao=-yts
+    variabilidade_da_situacao = -yts
 
     return Aref, variabilidade_da_situacao
+
 
 def ikegami_model(h, hr, f, w=22, lr=2, th=np.pi / 2):  # f em MHz
     # h-predio, hr-receptor em m e f em MHz

@@ -35,20 +35,27 @@ def calcula_perda(ht, hr, f, r, raster, raster_dsm, raster_landcover):
         dem, dsm, distancia, ht, hr)
 
     if landcover[-1] == 50:
-        urban = 'wi'
+        urb = Modelos.ikegami_model(h, hg2, f)
     else:
-        urban = 'n'
+        urb = 0
+
+    espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+
+
 
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
     qs = 7  # 70% das situacões
-    espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, hr, ht, distancia, h,
+    espesura, h, d_urb, hb_urb = get_dados_landcover(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia, h,
                                                      dl2, visada, area=1)
-    # colocar a cidicao para chamar itm ou urbano + espaco livre
 
+    # colocar a cidicao para chamar itm ou urbano + espaco livre
+    vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
     # print(
     #    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
-    perda = itmModel.longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada, h,
-                                       teta1, teta2, d_urb, hb_urb, urban, polarizacao='v')
+    hmed = (dem[0] + dem[-1]) / 2
+    perda, variabilidade_situacao = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
+                                                              Dh, visada,
+                                                              teta1, teta2, polarizacao='v')
 
     return perda
 
@@ -491,7 +498,7 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
     return he1, he2, Dh
 
 
-def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
+def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     angulo = []
     angulor = []
     demr = dem[::-1]
@@ -524,12 +531,12 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h = max(0, np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+    h = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
 
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r
 
 
-def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, visada, area=0):
+def get_dados_landcover(f, indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, visada, area=0):
     if visada:
         d_urb = distancia[-1]
     else:
@@ -548,14 +555,17 @@ def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, 
         c = (dem[indice] + ht - dem[-1] - hr)
         x = np.array(distancia)
         y = m * x + c
-        los = y - dem
+        los = y - (dem - (dem[-1] + hr))
         hb_urb = dem[0] - dem[-1] + ht
     else:
-        m = -(dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
-        c = (dem[indice] - dem[-1] - hr)
+        rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
+        m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
+        c = (rfresn + dem[indice] - dem[-1] - hr)
         x = np.array(distancia[indice:])
+        x = x - distancia[indice]
         y = m * x + c
-        los = y - dem[indice:]
+        los = y - (dem[indice:] - (dem[-1] + hr))
+        print(los)
         hb_urb = dem[indice] - dem[-1]
 
     for i in range(len(los) - 1):
@@ -563,7 +573,6 @@ def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, 
             for n in (0, 1, 2):
                 if landcover[3 * indice + i + n] == 10:
                     espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-
     return espesura, h, d_urb, hb_urb
 
 
@@ -718,9 +727,9 @@ def ptp():
                     caminho_landcover) as raster_landcover:
 
                 dem, dsm, landcover, distancia = perfil(r, raster, raster_dsm, raster_landcover)
-
+            Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r = obter_dados_do_perfil(
-                dem, dsm, distancia, ht, hr)
+                dem, dsm, distancia, ht, hr, Densidade_urbana)
             if landcover[-1] == 50:
                 urban = 'wi'
             else:
@@ -728,15 +737,17 @@ def ptp():
             yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
             qs = 7  # 70% das situacões
 
-            espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, hr, ht, distancia, h,
+            espesura, h, d_urb, hb_urb = get_dados_landcover(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
+                                                             h,
                                                              dl2, visada)
             # colocar a cidicao para chamar itm ou urbano + espaco livre
 
             print(
                 f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
-
-            perda = Modelos.longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
-                                               teta1, teta2, polarizacao='v')
+            hmed = (dem[0] + dem[-1]) / 2
+            perda, variabilidade_situacao = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
+                                                                      Dh, visada,
+                                                                      teta1, teta2, polarizacao='v')
 
             espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
@@ -779,9 +790,6 @@ def area():
         cobertura.append(
             {'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho,
              'f': float(request.form.get("f")), 'img': img, 'h': ht})
-        # aqui apenas criar a imagem, add ao mapa somente dento da funcao de ceiar mapa folium
-        # escolher como nome da camada o nome do ponto+'Area de cobertura'
-        # colocar a criamapa nesse arquivo dento dela chamar a fuçao de perda e definirvalor para fala ou não fala
     return render_template('area.html')
 
 

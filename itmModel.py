@@ -26,7 +26,7 @@ def ak(v1, v2):
 
 
 def vj(teta, k, dlj, s, dl):
-    return (teta / 2) * ((k / np.pi) * ((dlj * (s - dl)) / (s - dl - dlj)))
+    return (teta / 2) * (((k / np.pi) * ((dlj * (s - dl)) / (s - dl + dlj)))**0.5)
 
 
 def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar):
@@ -196,6 +196,7 @@ def difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg,
     tetae = max((teta1 + teta2), dl * Ye)
     teta = tetae + s * Ye
     d3 = max(dls, dl + 1.3787 * Xae)
+
     d4 = d3 + 2.7574 * Xae
 
     # Efeito da curvatura da terra #
@@ -429,7 +430,7 @@ def longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada, h,
     dls1 = (2 * he1 / Ye) ** 0.5
     dls2 = (2 * he2 / Ye) ** 0.5
     dls = dls1 + dls2
-
+    print(dls)
     if visada:
         dl1 = dls1 * np.exp(-0.07 * ((Dh / max(he1, 5)) ** 0.5))
         teta1 = (0.65 * Dh * ((dls1 / dl1) - 1) - 2 * he1) / dls1

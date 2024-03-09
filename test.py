@@ -6,6 +6,7 @@ import folium
 import itmModel
 import ee
 import matplotlib.pyplot as plt
+import Modelos
 
 # correcao distancia 6228.6112900782355/5712.1356899878 ou 5719.711764799506
 
@@ -181,7 +182,7 @@ b = 6356752
 
 def R(lat):
     return (((((a ** 2) * np.cos(lat * np.pi / 180)) ** 2) + (((b ** 2) * np.sin(lat * np.pi / 180)) ** 2)) / (
-                ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
+            ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
 def perfil(r, src, src_dsm, src_landcover):
@@ -528,10 +529,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h = max(0, np.mean(dsm[-6:len(dsm)]) - np.mean(dem[-6:len(dem)]))
-    print(h)
-    print(np.mean(dsm[-6:len(dsm) - 4]))
-    print(np.mean(dem[-6:len(dem)]) - 4)
+    h = max(0, 1.5 * np.mean(dsm[-4:len(dsm)]) - np.mean(dem[-4:len(dem)]))
 
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r
 
@@ -555,14 +553,16 @@ def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, 
         c = (dem[indice] + ht - dem[-1] - hr)
         x = np.array(distancia)
         y = m * x + c
-        los = y - dem
+        los = y - (dem - (dem[-1] + hr))
         hb_urb = dem[0] - dem[-1] + ht
     else:
-        m = -(dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
-        c = (dem[indice] - dem[-1] - hr)
+        rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
+        m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
+        c = (rfresn + dem[indice] - dem[-1] - hr)
         x = np.array(distancia[indice:])
+        x = x - distancia[indice]
         y = m * x + c
-        los = y - dem[indice:]
+        los = y - (dem[indice:] - (dem[-1] + hr))
         hb_urb = dem[indice] - dem[-1]
 
     for i in range(len(los) - 1):
@@ -597,7 +597,6 @@ else:
     urban = 'n'
 yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
 qs = 7  # 70% das situacões
-print(len(landcover))
 espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, 2, 22.5, distancia, h,
                                                  dl2, visada)
 # colocar a cidicao para chamar itm ou urbano + espaco livre
@@ -605,9 +604,9 @@ espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover
 print(
     f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
 
-perda = itmModel.longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada, h,
-                                   teta1, teta2, d_urb, hb_urb, urban, polarizacao='v')
-import Modelos
+h0 = (dem[0] + dem[-1]) / 2
+perda = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
+                                  teta1, teta2, polarizacao='v')
 
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
@@ -617,13 +616,12 @@ else:
     urb = 0
 
 vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-print(friis_free_space_loss_db(f, d))
+print(espaco_livre)
 
 print(perda)
 
 print(urb)
 print(vegetacao)
-print(espesura)
 plt.plot(distancia, dem)
 plt.title('Modelo Digital de Elevação (DEM)')
 
