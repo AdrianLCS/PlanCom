@@ -26,6 +26,10 @@ app = Flask(__name__)
 c = 299792458  # m/s
 
 
+def parametros_difracao(dist, DEM):
+    pass
+
+
 def friis_free_space_loss_db(f, d):  # gt=direcionalidade*eficiencia
     comprimento_de_onda = c / (f * 1000000)
     L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
@@ -584,20 +588,21 @@ caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 r = reta(p1, p2)
 f = float(800)
-
+ime=20
+PDC=20
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
         caminho_landcover) as raster_landcover:
     dem, dsm, landcover, distancia = perfil(r, raster, raster_dsm, raster_landcover)
 
 d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r = obter_dados_do_perfil(
-    dem, dsm, distancia, 22.5, 2)
+    dem, dsm, distancia, PDC, ime)
 if landcover[-1] == 50:
     urban = 'wi'
 else:
     urban = 'n'
 yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
 qs = 7  # 70% das situacões
-espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, 2, 22.5, distancia, h,
+espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, ime, PDC, distancia, h,
                                                  dl2, visada)
 # colocar a cidicao para chamar itm ou urbano + espaco livre
 
@@ -606,7 +611,7 @@ print(
 
 h0 = (dem[0] + dem[-1]) / 2
 perda = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
-                                  teta1, teta2, polarizacao='v')
+                                  teta1, teta2, polarizacao='v', simplificado=0)
 
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
@@ -622,6 +627,7 @@ print(perda)
 
 print(urb)
 print(vegetacao)
+print(espesura)
 plt.plot(distancia, dem)
 plt.title('Modelo Digital de Elevação (DEM)')
 

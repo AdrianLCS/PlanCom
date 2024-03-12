@@ -207,7 +207,7 @@ def ascat(s, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns, h0d=-1):
 
 def difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
     # Constante especifica #
-    tetae = max((teta1 + teta2), dl * Ye)
+    tetae = max((teta1 + teta2), - dl * Ye)
     teta = tetae + s * Ye
     d3 = max(dls, dl + 1.3787 * Xae)
     d4 = d3 + 2.7574 * Xae
@@ -270,6 +270,18 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                     d1 - d0) * np.log(d2 / d0))
             if K2l > 0:
                 K1l = (A2 - A0 - K2l * np.log(d2 / d0)) / (d2 - d0)
+                if K1l >= 0:
+                    AK1 = K1l
+                    AK2 = K2l
+                else:
+                    K2ll = (A2 - A0) / np.log(d2 / d0)
+                    if K2ll >= 0:
+                        AK1 = 0
+                        AK2 = K2ll
+                    else:
+                        AK1 = md
+                        AK2 = 0
+
             else:
                 K1ll = (A2 - A1) / (d2 - d1)
                 if K1ll > 0:
@@ -381,15 +393,15 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     dl = dl1 + dl2
 
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
-    tetae = max((teta1 + teta2), dl * Ye)
+    tetae = max((teta1 + teta2), -dl * Ye)
     Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)
 
     if simplificado:
         if d <= dls:
-            Aref = 20 * np.log10(1 + (dl * Dh / he1 * he2))
+            Aref = 20 * np.log10(1 + (dl * Dh / (he1 * he2)))
         elif (d > dls) and (d <= dx):
             a = 6370 / (1 - 0.04665 * np.exp(0.005577 * Ns))
-            Aref = (1 + 0.45 * ((Dh / (c / f)) ** 0.5) * ((a * tetae + dl / d) ** 0.5))
+            Aref = (1 + 0.045 * ((Dh / (c / (f*1000000))) ** 0.5) * (((a * tetae + dl) / d) ** 0.5))**(-1)
         else:
             H0 = 1 / (he1 * he2 * tetae * f * abs(0.007 - 0.058 * tetae))
             Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)

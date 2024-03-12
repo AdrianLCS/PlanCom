@@ -751,7 +751,7 @@ def ptp():
 
             espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
-            if urban == 'wi':
+            if urban == 'wi' and h > hg2:
                 urb = Modelos.ikegami_model(h, hg2, f)
             else:
                 urb = 0
@@ -759,7 +759,7 @@ def ptp():
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-
+            print(f' Perda por popgação no espaço livre: {espaco_livre}\n Perda relativa ao terreno: {perda}\n perda por variabilidade da situação: {variabilidade_situacao} \n perda em vegetação: {vegetacao} \b Perda urbana: {urb}')
             perdas.append({'ponto1': request.form.get("ponto1"),
                            'ponto2': request.form.get("ponto2"),
                            'f': f,
