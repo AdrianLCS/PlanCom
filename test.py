@@ -26,8 +26,52 @@ app = Flask(__name__)
 c = 299792458  # m/s
 
 
-def parametros_difracao(dist, DEM):
-    pass
+
+
+def parametros_difracao(distancia, dem, ht, hr):
+    angulo = []
+    demr = dem[::-1]
+    d = distancia[-1]
+    aref = np.arctan((-ht - dem[0] + hr + demr[0]) / d)
+    visada = 1  # 'visada# '
+    maxangulo = aref
+    idl1 = 0
+    dls = [0]
+    hs = [ht+dem[0]]
+    h, dl1, teta1 = 0,0,0
+    for i in range(1, len(dem) - 1):
+        angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
+        if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
+            dl1, idl1 = distancia[i], i
+            h = dem[i]
+            visada = 0
+        maxangulo = max(angulo)
+    if not visada:
+        hs.append(h)
+        dls.append(dl1)
+
+
+    while not visada:
+        angulo = []
+        aref = np.arctan((- dem[idl1] - 1 + hr + demr[0]) / (d - distancia[idl1]))
+        maxangulo=aref
+        visada = 1
+        for i in range(idl1 + 3, len(dem) - 1):
+            angulo.append(np.arctan((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1])))
+            if (angulo[i - idl1 - 3] > aref) and (angulo[i - idl1 - 3] > maxangulo):
+                dl1, idl1 = distancia[i], i
+                h = dem[i]
+                visada = 0
+            maxangulo = max(angulo)
+        if visada:
+            break
+        hs.append(h)
+        dls.append(dl1)
+    dls.append(d)
+    hs.append(dem[-1]+hr)
+    print(hs)
+    print(dls)
+    return dls, hs
 
 
 def friis_free_space_loss_db(f, d):  # gt=direcionalidade*eficiencia
@@ -588,8 +632,8 @@ caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 r = reta(p1, p2)
 f = float(800)
-ime=20
-PDC=20
+ime = 2
+PDC = 22
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
         caminho_landcover) as raster_landcover:
     dem, dsm, landcover, distancia = perfil(r, raster, raster_dsm, raster_landcover)
@@ -610,12 +654,16 @@ print(
     f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
 
 h0 = (dem[0] + dem[-1]) / 2
+
+dls,hs = parametros_difracao(distancia, dem, hg1, hg2)
+perda_difrac = Modelos.modelo_epstein_peterson(dls, hs,f)
+
 perda = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                   teta1, teta2, polarizacao='v', simplificado=0)
 
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
-if urban == 'wi' and h > hg2:
+if urban == 'wi' and h > hg2 + 0.5:
     urb = Modelos.ikegami_model(h, hg2, f)
 else:
     urb = 0
@@ -628,6 +676,7 @@ print(perda)
 print(urb)
 print(vegetacao)
 print(espesura)
+print(perda_difrac)
 plt.plot(distancia, dem)
 plt.title('Modelo Digital de Elevação (DEM)')
 

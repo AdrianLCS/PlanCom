@@ -3,6 +3,49 @@ import math
 
 c = 299792458  # m/s
 
+
+def difraclos(v):
+    print(v)
+    if  (v<0):
+        return -20*np.log10(0.5-0.62*v)
+    elif (v>=0) and (v<1):
+        return -20 * np.log10(0.5*np.exp(-0.95*v))
+    elif (v>=1) and (v<2.4):
+        return -20 * np.log10(0.4-((0.1184-((0.38-0.1*v)**2))**0.5))
+    elif v>=2.4:
+        return -20 * np.log10(0.225/v)
+
+def modelo_epstein_peterson(dls, hs,f):
+    lambd=c/(f*1000000)
+    l=0
+    if len(dls)-2==0:
+        l=0
+    else:
+        v=[]
+        for i in range(1,len(dls)-1):
+
+            if hs[i - 1] < hs[i + 1]:
+                v.append((hs[i] - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])) * (
+                            (2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+
+            else:
+                v.append(
+                    (hs[i] - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])) * ((2 * (
+                            dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+
+            if i<len(dls)-2:
+                d1 = dls[i] - dls[i - 1]
+                d2 = dls[i + 1] - dls[i]
+                d3 = dls[i + 2] - dls[i + 1]
+                correcao = ((d1 + d2) * (d2 + d3) / (d2 * (d1 + d2 + d3))) ** 0.5
+                ll = 20 * np.log10(correcao)
+            else:
+                ll=0
+
+            l = ll + l + fn(v[i-1])
+
+    return l
+
 def raio_fresnel(n, d1, d2, f):
     # f em Mhertz
     return (n * (c / (f*1000000)) * d1 * d2 / (d1 + d2)) ** 0.5
@@ -125,7 +168,7 @@ def alos(k, dls, Dh, s, md, Aed, he1, he2, Zg):
     At = -20 * np.log10(abs(1 + Re * np.exp(delta * 1j)))
 
     Alos = (1 - w) * Ad + w * At
-    return Alos
+    return Alos,At
 
 
 def rj(k, tetal, hej):
@@ -242,8 +285,8 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
     if Aed >= 0:
         d0 = min(0.5 * dl, 1.908 * k * he1 * he2)
         d1 = (3 / 4) * d0 + (1 / 4) * dl
-        A0 = alos(k, dls, Dh, d0, md, Aed, he1, he2, Zg)
-        A1 = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
+        A0, At = alos(k, dls, Dh, d0, md, Aed, he1, he2, Zg)
+        A1, At = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
 
         K2l = max(0, ((d2 - d0) * (A1 - A0) - (d1 - d0) * (A2 - A0)) / (
                 (d2 - d0) * np.log(d1 / d0) - (d1 - d0) * np.log(d2 / d0)))
@@ -264,8 +307,8 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
         d0 = 1.908 * k * he1 * he2
         d1 = max(-Aed / md, dl / 4)
         if d0 < d1:
-            A0 = alos(k, dls, Dh, d0, md, Aed, he1, he2, Zg)
-            A1 = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
+            A0, At = alos(k, dls, Dh, d0, md, Aed, he1, he2, Zg)
+            A1, At = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
             K2l = max(0, ((d2 - d0) * (A1 - A0) - (d1 - d0) * (A2 - A0)) / (d2 - d0) * np.log(d1 / d0) - (
                     d1 - d0) * np.log(d2 / d0))
             if K2l > 0:
@@ -291,7 +334,7 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                     AK1 = md
                     AK2 = 0
         else:
-            A1 = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
+            A1, At = alos(k, dls, Dh, d1, md, Aed, he1, he2, Zg)
             K1ll = (A2 - A1) / (d2 - d1)
             if K1ll > 0:
                 AK1 = K1ll
@@ -302,7 +345,7 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
     Ael = A2 - AK1 * d2
 
     Aref = max(0, Ael + AK1 * s + AK2 * np.log(s / dls))
-    return Aref
+    return Aref, At
 
 
 def scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns):
@@ -395,7 +438,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
     tetae = max((teta1 + teta2), -dl * Ye)
     Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)
-
+    At=0
     if simplificado:
         if d <= dls:
             Aref = 20 * np.log10(1 + (dl * Dh / (he1 * he2)))
@@ -407,7 +450,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
             Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)
     else:
         if d <= dls:
-            Aref = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
         elif (d > dls) and (d <= dx):
             Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)[0]
         else:
@@ -417,10 +460,10 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
 
     variabilidade_da_situacao = -yts
 
-    return Aref, variabilidade_da_situacao
+    return Aref, variabilidade_da_situacao, At
 
 
-def ikegami_model(h, hr, f, w=22, lr=2, th=np.pi / 2):  # f em MHz
+def ikegami_model(h, hr, f, w=25, lr=2, th=np.pi / 2):  # f em MHz
     # h-predio, hr-receptor em m e f em MHz
     # th é o angulo entre linha de visada e a rua dado em radianos pois é argumento de np.sin()
     # w é a largura da rua

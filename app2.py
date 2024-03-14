@@ -20,12 +20,58 @@ ponto_final = ee.Geometry.Point(-22.7364, -43.5159)
 distancia_planar = ponto_inicial.distance(ponto_final).getInfo()
 print(distancia_planar)
 """
-
 ee.Initialize(project="plancom-409417")
 app = Flask(__name__)
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
+
+Configuracao = {"terreno": "ITM", "urb": 1, "vegetacao": 1, "visada": "2r"}#ITM ou Epstein-peterson
+
+def parametros_difracao(distancia, dem, ht, hr):
+    angulo = []
+    demr = dem[::-1]
+    d = distancia[-1]
+    aref = np.arctan((-ht - dem[0] + hr + demr[0]) / d)
+    visada = 1  # 'visada# '
+    maxangulo = aref
+    idl1 = 0
+    dls = [0]
+    hs = [ht+dem[0]]
+    h, dl1, teta1 = 0,0,0
+    for i in range(1, len(dem) - 1):
+        angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
+        if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
+            dl1, idl1 = distancia[i], i
+            h = dem[i]
+            visada = 0
+        maxangulo = max(angulo)
+    if not visada:
+        hs.append(h)
+        dls.append(dl1)
+
+
+    while not visada:
+        angulo = []
+        aref = np.arctan((- dem[idl1] - 1 + hr + demr[0]) / (d - distancia[idl1]))
+        maxangulo=aref
+        visada = 1
+        for i in range(idl1 + 3, len(dem) - 1):
+            angulo.append(np.arctan((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1])))
+            if (angulo[i - idl1 - 3] > aref) and (angulo[i - idl1 - 3] > maxangulo):
+                dl1, idl1 = distancia[i], i
+                h = dem[i]
+                visada = 0
+            maxangulo = max(angulo)
+        if visada:
+            break
+        hs.append(h)
+        dls.append(dl1)
+    dls.append(d)
+    hs.append(dem[-1]+hr)
+    print(hs)
+    print(dls)
+    return dls, hs
 
 
 def calcula_perda(ht, hr, f, r, raster, raster_dsm, raster_landcover):
@@ -53,7 +99,7 @@ def calcula_perda(ht, hr, f, r, raster, raster_dsm, raster_landcover):
     # print(
     #    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
     hmed = (dem[0] + dem[-1]) / 2
-    perda, variabilidade_situacao = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
+    perda, variabilidade_situacao, At = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
                                                               Dh, visada,
                                                               teta1, teta2, polarizacao='v')
 
@@ -745,13 +791,13 @@ def ptp():
             print(
                 f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
             hmed = (dem[0] + dem[-1]) / 2
-            perda, variabilidade_situacao = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
+            perda, variabilidade_situacao, At = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
                                                                       Dh, visada,
                                                                       teta1, teta2, polarizacao='v')
 
             espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
-            if urban == 'wi' and h > hg2:
+            if urban == 'wi' and h > hg2+0.5:
                 urb = Modelos.ikegami_model(h, hg2, f)
             else:
                 urb = 0

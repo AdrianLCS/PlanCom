@@ -1,3 +1,11 @@
+Passo a passo área
+1 achar todos os dl1 e teta1 em função do angulo.(plotar o perfil para cada angulo a uma distancia de 1,1 dmax para espaço livre)
+salvar num dicionario: angulo (720 angulos diferente, ou pecisão configurável), perfil, dsm e land cover e dl1 dl2
+percorrer o raster. verificar distancia, se > dmax pintar branco, se não verificar angulo e dl1 se >dl1 fala, se não do ponto, se for menor que dl1= fala se não extrair a parte do perfil até d e fazer todo o calculo do ITM.
+Verificar angulo -> primeiro verificar se x/y >= 0.004 -> angulo 0 ou 180 ou y/x >= 0.004 -> angulo 90, se não fazer int(2*arctan(x/y))/2 para achar o angulo.
+após selecionar perfil fazer todo o processo do ITM menos dl1 e teta1.(colocar condição para entrada da funçao)
+para calculo urb (colocar opção area ou ponto no calculo de urba) usar ponto inicial-final, achar os 3 pontos mais proximos para verificar altura da contrução
+
 IpP- istituto perreira passos, dados geograficos
 
 
