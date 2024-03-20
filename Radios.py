@@ -7,4 +7,4 @@ class radio():
         Gan
 
 rf7800vhh = radio(sensibilidade=-116)
-s=rf7800vhh.sensibilidad
+s=rf7800vhh.sensibilidade
