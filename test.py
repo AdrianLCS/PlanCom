@@ -677,7 +677,12 @@ print(urb)
 print(vegetacao)
 print(espesura)
 print(perda_difrac)
-plt.plot(distancia, dem)
-plt.title('Modelo Digital de Elevação (DEM)')
+#plt.plot(distancia, dem)
+#plt.title('Modelo Digital de Elevação (DEM)')
 
-plt.show()
+#plt.show()
+
+
+a=np.array((1,2))
+b = np.array([3.1,4])
+print(int(a+b))
