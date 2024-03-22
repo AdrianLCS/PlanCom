@@ -44,7 +44,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
         print(ponto)
         print(pf)
         r = reta(ponto, pf)
-        dem, dsm, landcover, distancia = perfil(r)
+        dem, dsm, landcover, distancia = perfil(r, 1)
         distancia0.append(distancia)
         retas.append(r)
         dem0.append(dem)
@@ -289,7 +289,7 @@ def R(lat):
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
-def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
+def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
     with rasterio.open(caminho) as src, rasterio.open(caminho_dsm) as src_dsm, rasterio.open(
             caminho_landcover) as src_landcover:
@@ -307,24 +307,28 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
                 pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
                 pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
                 dist = distancia * i
-                alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][
-                    int(np.floor(pixel_x1))] + (
-                                   pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][
-                               int(np.floor(pixel_x1))] + (
-                                   1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
-                               int(np.floor(pixel_x1))] + (
-                                   pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][
-                               int(np.ceil(pixel_x1))]) / 2
+                if area:
+                    alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+                    alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                else:
+                    alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][
+                        int(np.floor(pixel_x1))] + (
+                                       pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][
+                                   int(np.ceil(pixel_x1))]) / 2
 
-                alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                    int(np.floor(pixel_x1_dsm))] + (
-                                   pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
-                               int(np.floor(pixel_x1_dsm))] + (
-                                   1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
-                           raster_dsm[int(np.floor(pixel_y1_dsm))][
-                               int(np.floor(pixel_x1_dsm))] + (
-                                   pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                               int(np.ceil(pixel_x1_dsm))]) / 2
+                    alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                        int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
+                               raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.ceil(pixel_x1_dsm))]) / 2
 
                 d.append(dist)
                 dem.append(alt_dem)
@@ -347,7 +351,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
     return dem, dsm, landcover, d, indice_atual
 
 
-def perfil(r):
+def perfil(r, area=0):
     unidade_distancia = 2 * np.pi * R(r[0][1]) / (1296000)
     indice_atual = 0
     dem = []
@@ -363,7 +367,7 @@ def perfil(r):
                 np.shape(r)[0] - 1)
 
     while indice_atual < np.shape(r)[0]-1:
-        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia)
+        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area)
 
     return dem, dsm, landcover, d
 

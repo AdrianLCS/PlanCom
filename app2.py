@@ -26,7 +26,7 @@ c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 
-Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 600, "min_alt": 0}  # ITM ou Epstein-peterson
+Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 300, "min_alt": 0}  # ITM ou Epstein-peterson
 
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
@@ -44,7 +44,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
         print(ponto)
         print(pf)
         r = reta(ponto, pf)
-        dem, dsm, landcover, distancia = perfil(r)
+        dem, dsm, landcover, distancia = perfil(r,1)
         distancia0.append(distancia)
         retas.append(r)
         dem0.append(dem)
@@ -289,7 +289,7 @@ def R(lat):
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
-def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
+def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
     with rasterio.open(caminho) as src, rasterio.open(caminho_dsm) as src_dsm, rasterio.open(
             caminho_landcover) as src_landcover:
@@ -307,24 +307,28 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
                 pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
                 pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
                 dist = distancia * i
-                alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][
-                    int(np.floor(pixel_x1))] + (
-                                   pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][
-                               int(np.floor(pixel_x1))] + (
-                                   1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
-                               int(np.floor(pixel_x1))] + (
-                                   pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][
-                               int(np.ceil(pixel_x1))]) / 2
+                if area:
+                    alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+                    alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                else:
+                    alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][
+                        int(np.floor(pixel_x1))] + (
+                                       pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][
+                                   int(np.ceil(pixel_x1))]) / 2
 
-                alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                    int(np.floor(pixel_x1_dsm))] + (
-                                   pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
-                               int(np.floor(pixel_x1_dsm))] + (
-                                   1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
-                           raster_dsm[int(np.floor(pixel_y1_dsm))][
-                               int(np.floor(pixel_x1_dsm))] + (
-                                   pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                               int(np.ceil(pixel_x1_dsm))]) / 2
+                    alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                        int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
+                               raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.ceil(pixel_x1_dsm))]) / 2
 
                 d.append(dist)
                 dem.append(alt_dem)
@@ -347,7 +351,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia):
     return dem, dsm, landcover, d, indice_atual
 
 
-def perfil(r):
+def perfil(r, area=0):
     unidade_distancia = 2 * np.pi * R(r[0][1]) / (1296000)
     indice_atual = 0
     dem = []
@@ -363,7 +367,7 @@ def perfil(r):
                 np.shape(r)[0] - 1)
 
     while indice_atual < np.shape(r)[0]-1:
-        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia)
+        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area)
 
     return dem, dsm, landcover, d
 
@@ -470,14 +474,14 @@ def unir_raster(raster1, raster2, ref):
                 file1 = aterar_caracter(raster1, 6, str(int(raster1[6]) + 1))
                 file3 = aterar_caracter(file4, 6, str(int(file4[6]) + 1))
 
-    file1 = os.path.join('C:\PythonFlask\PlanCom\Raster', file1)
-    file2 = os.path.join('C:\PythonFlask\PlanCom\Raster', file2)
-    file3 = os.path.join('C:\PythonFlask\PlanCom\Raster', file3)
-    file4 = os.path.join('C:\PythonFlask\PlanCom\Raster', file4)
-    file1dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file1)
-    file2dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file2)
-    file3dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file3)
-    file4dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file4)
+    file1 = os.path.join('Raster', file1)
+    file2 = os.path.join('Raster', file2)
+    file3 = os.path.join('Raster', file3)
+    file4 = os.path.join('Raster', file4)
+    file1dsm = os.path.join('dsm', file1)
+    file2dsm = os.path.join('dsm', file2)
+    file3dsm = os.path.join('dsm', file3)
+    file4dsm = os.path.join('dsm', file4)
     rasterdsm = unir_raster2x2(file1dsm, file2dsm, file3dsm, file4dsm)
     rasterdem = unir_raster2x2(file1, file2, file3, file4)
     return rasterdem, rasterdsm
@@ -553,9 +557,9 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster2 = raster2 + we2 + '00' + lon2
 
     if raster1 == raster2:
-        return str(os.path.join('C:\PythonFlask\PlanCom\Raster', raster1 + '.tif')), str(
-            os.path.join('C:\PythonFlask\PlanCom\dsm', raster1 + '.tif')), str(
-            os.path.join('C:\PythonFlask\PlanCom\LandCover', raster_landcover + '.tif'))
+        return str(os.path.join('Raster', raster1 + '.tif')), str(
+            os.path.join('dsm', raster1 + '.tif')), str(
+            os.path.join('LandCover', raster_landcover + '.tif'))
     else:
         ref = ''
         if (we1 == 'W' and lon1 > lon2) or (we1 == 'E' and lon1 < lon2):
@@ -571,7 +575,7 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster, rasterdsm = unir_raster(raster1, raster2, ref)
 
         return raster, rasterdsm, str(
-            os.path.join('C:\PythonFlask\PlanCom\LandCover', raster_landcover + '.tif'))
+            os.path.join('LandCover', raster_landcover + '.tif'))
 
 
 def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
@@ -699,7 +703,8 @@ cobertura = []
 
 
 def addfoliun():
-    escala_de_altura = [0, 1000]
+    global Configuracao
+    escala_de_altura = [Configuracao["min_alt"], Configuracao["max_alt"]]
     elvn = ee.Image("NASA/NASADEM_HGT/001")
     # ['00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000']
     image_viz_params = {'bands': ['elevation'], 'min': escala_de_altura[0], 'max': escala_de_altura[1],
