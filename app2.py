@@ -26,7 +26,7 @@ c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 
-Configuracao = {"terreno": "ITM", "urb": 1, "vegetacao": 1, "visada": "2r"}  # ITM ou Epstein-peterson
+Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 600, "min_alt": 0}  # ITM ou Epstein-peterson
 
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
@@ -905,6 +905,21 @@ def area():
              'f': float(request.form.get("f")), 'img': img, 'h': ht})
     return render_template('area.html')
 
+
+@app.route('/config', methods=['GET', 'POST'])
+def conf():
+    global Configuracao
+    p1 = ()
+    ht = 2
+    if request.form.get("modelo") and request.form.get("urb") and request.form.get("veg") and \
+            request.form.get("precisao") and request.form.get("min_alt") and request.form.get("max_alt"):
+        Configuracao = {"modelo": request.form.get("modelo"),
+                        "urb": request.form.get("urb"),
+                        "veg": request.form.get("veg"),
+                        "precisao": request.form.get("precisao"),
+                        "max_alt": request.form.get("max_alt"),
+                        "min_alt": request.form.get("min_alt")}  # ITM ou Epstein-peterson
+    return render_template('conf.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
