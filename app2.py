@@ -279,9 +279,6 @@ def reta(p1, p2):
     return r
 
 
-# istituto pereira passos
-
-
 def R(lat):
     return (((((a ** 2) * np.cos(lat * np.pi / 180)) ** 2) + (((b ** 2) * np.sin(lat * np.pi / 180)) ** 2)) / (
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
@@ -733,13 +730,9 @@ def addfoliun():
                                        overlay=False,
                                        control=True).add_to(folium_map)
 
-        folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                                       attr='google',
-                                       name='google maps',
-                                       max_zoom=20,
-                                       subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
-                                       overlay=False,
-                                       control=True).add_to(folium_map)
+        folium.TileLayer(tiles='https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                         attr='OpenTopoMap',
+                         name='OpenTopoMap').add_to(folium_map)
 
         map_id_dict = ee.Image(elvn).getMapId(image_viz_params)
 
