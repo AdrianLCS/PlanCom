@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+
+<body>
+    <div id="config" style="height: 15%;">
+        <h2 style="text-align: center;">Seleção de mapa</h2>
+    <ol>
+        <form action="{{url_for('addmapa')}}" method="post">
+            <label for="mapa">caminho do mapa a ser carregar</label>
+            <input type="text" id="mapa" name="mapa" required>
+
+
+            <button>Carregar</button>
+        </form>
+    </ol>
+    </div>
+
+</body>
+{% endblock conteudo%}

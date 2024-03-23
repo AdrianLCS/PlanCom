@@ -19,15 +19,13 @@ ponto_final = ee.Geometry.Point(-22.7364, -43.5159)
 distancia_planar = ponto_inicial.distance(ponto_final).getInfo()
 print(distancia_planar)
 """
-ee.Authenticate()
-ee.Initialize(project="plancom-409417")
 app = Flask(__name__)
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 
 Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 300, "min_alt": 0}  # ITM ou Epstein-peterson
-
+mapas = []
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     comprimento_de_onda = c / (f * 1000000)
@@ -705,7 +703,7 @@ cobertura = []
 def addfoliun():
     global Configuracao
     escala_de_altura = [Configuracao["min_alt"], Configuracao["max_alt"]]
-    elvn = ee.Image("NASA/NASADEM_HGT/001")
+
     # ['00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000']
     image_viz_params = {'bands': ['elevation'], 'min': escala_de_altura[0], 'max': escala_de_altura[1],
                         'palette': ['0000ff', '00ffff', 'ffff00', 'ff0000', 'ffffff'],
@@ -715,40 +713,45 @@ def addfoliun():
     # map_elevn.add_layer(elvn, image_viz_params, 'Elevacao')
 
     folium_map = folium.Map(location=[-22.9120, -43.2089], zoom_start=7)
+    try:
+        ee.Authenticate()
+        ee.Initialize(project="plancom-409417")
+        elvn = ee.Image("NASA/NASADEM_HGT/001")
+        folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                                       attr='google',
+                                       name='google maps',
+                                       max_zoom=20,
+                                       subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
+                                       overlay=False,
+                                       control=True).add_to(folium_map)
 
-    folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                                   attr='google',
-                                   name='google maps',
-                                   max_zoom=20,
-                                   subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
-                                   overlay=False,
-                                   control=True).add_to(folium_map)
+        folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                                       attr='google',
+                                       name='google maps street view',
+                                       max_zoom=20,
+                                       subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
+                                       overlay=False,
+                                       control=True).add_to(folium_map)
 
-    folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-                                   attr='google',
-                                   name='google maps street view',
-                                   max_zoom=20,
-                                   subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
-                                   overlay=False,
-                                   control=True).add_to(folium_map)
+        folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                                       attr='google',
+                                       name='google maps',
+                                       max_zoom=20,
+                                       subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
+                                       overlay=False,
+                                       control=True).add_to(folium_map)
 
-    folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                                   attr='google',
-                                   name='google maps',
-                                   max_zoom=20,
-                                   subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
-                                   overlay=False,
-                                   control=True).add_to(folium_map)
+        map_id_dict = ee.Image(elvn).getMapId(image_viz_params)
 
-    map_id_dict = ee.Image(elvn).getMapId(image_viz_params)
-
-    folium.raster_layers.TileLayer(
-        tiles=map_id_dict['tile_fetcher'].url_format,
-        attr='Map Data &copy; <a href="https://earthengine.google.com/">Google Earth Engine</a>',
-        name='elevacao',
-        overlay=True,
-        control=True
-    ).add_to(folium_map)
+        folium.raster_layers.TileLayer(
+            tiles=map_id_dict['tile_fetcher'].url_format,
+            attr='Map Data &copy; <a href="https://earthengine.google.com/">Google Earth Engine</a>',
+            name='elevacao',
+            overlay=True,
+            control=True
+        ).add_to(folium_map)
+    except:
+        print("erro ao tentar acessar a internet")
 
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
@@ -925,6 +928,15 @@ def conf():
                         "max_alt": request.form.get("max_alt"),
                         "min_alt": request.form.get("min_alt")}  # ITM ou Epstein-peterson
     return render_template('conf.html')
+
+
+@app.route('/addmapa', methods=['GET', 'POST'])
+def addmapa():
+    global mapas
+    if request.form.get("mapa") :
+        mapas.append(request.form.get("mapa"))
+    return render_template('addmapa.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
