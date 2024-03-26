@@ -694,8 +694,9 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia):
     return espesura
 
 
-cobertura = []
 
+cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'Raster\S23W044.tif',
+             'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
 
 def addfoliun():
     global Configuracao
@@ -747,7 +748,6 @@ def addfoliun():
         ).add_to(folium_map)
     except:
         print('Erro na biblioteca Earth Engine')
-
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
 

@@ -761,7 +761,8 @@ def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, 
     return espesura, h, d_urb, hb_urb
 
 
-cobertura = []
+cobertura = [{'nome': "PDC_area_de_cobertura_800MHz", 'raster': 'Raster\S23W044.png',
+             'f': float(request.form.get("f")), 'img': 'Raster\S23W044.png', 'h': 10}]
 
 
 def addfoliun():
