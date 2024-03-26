@@ -711,9 +711,7 @@ def addfoliun():
 
     folium_map = folium.Map(location=[-22.9120, -43.2089], zoom_start=7)
     try:
-        ee.Authenticate()
-        ee.Initialize(project="plancom-409417")
-        elvn = ee.Image("NASA/NASADEM_HGT/001")
+
         folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
                                        attr='google',
                                        name='google maps',
@@ -733,9 +731,13 @@ def addfoliun():
         folium.TileLayer(tiles='https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
                          attr='OpenTopoMap',
                          name='OpenTopoMap').add_to(folium_map)
-
+    except:
+        print("erro ao tentar acessar a internet")
+    try:
+        ee.Authenticate()
+        ee.Initialize(project="plancom-409417")
+        elvn = ee.Image("NASA/NASADEM_HGT/001")
         map_id_dict = ee.Image(elvn).getMapId(image_viz_params)
-
         folium.raster_layers.TileLayer(
             tiles=map_id_dict['tile_fetcher'].url_format,
             attr='Map Data &copy; <a href="https://earthengine.google.com/">Google Earth Engine</a>',
@@ -744,7 +746,7 @@ def addfoliun():
             control=True
         ).add_to(folium_map)
     except:
-        print("erro ao tentar acessar a internet")
+        print('Erro na biblioteca Earth Engine')
 
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
