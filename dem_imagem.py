@@ -251,9 +251,9 @@ with rasterio.open(file_path) as src:
 # ober altura
 print(dist[-1])
 # Visualizar o raster usando Matplotlib
-plt.imshow(raster_data, cmap='terrain')
-plt.colorbar(label='Elevação (metros)')
-#plt.plot(dist, elev)
+#plt.imshow(raster_data, cmap='terrain')
+#plt.colorbar(label='Elevação (metros)')
+plt.plot(dist, elev)
 plt.title('Modelo Digital de Elevação (DEM)')
 
 plt.show()
