@@ -6,49 +6,52 @@ c = 299792458  # m/s
 
 def difraclos(v):
     print(v)
-    if  (v<0):
-        return -20*np.log10(0.5-0.62*v)
-    elif (v>=0) and (v<1):
-        return -20 * np.log10(0.5*np.exp(-0.95*v))
-    elif (v>=1) and (v<2.4):
-        return -20 * np.log10(0.4-((0.1184-((0.38-0.1*v)**2))**0.5))
-    elif v>=2.4:
-        return -20 * np.log10(0.225/v)
+    if (v < 0):
+        return -20 * np.log10(0.5 - 0.62 * v)
+    elif (v >= 0) and (v < 1):
+        return -20 * np.log10(0.5 * np.exp(-0.95 * v))
+    elif (v >= 1) and (v < 2.4):
+        return -20 * np.log10(0.4 - ((0.1184 - ((0.38 - 0.1 * v) ** 2)) ** 0.5))
+    elif v >= 2.4:
+        return -20 * np.log10(0.225 / v)
 
-def modelo_epstein_peterson(dls, hs,f):
-    lambd=c/(f*1000000)
-    l=0
-    if len(dls)-2==0:
-        l=0
+
+def modelo_epstein_peterson(dls, hs, f):
+    lambd = c / (f * 1000000)
+    l = 0
+    if len(dls) - 2 == 0:
+        l = 0
     else:
-        v=[]
-        for i in range(1,len(dls)-1):
+        v = []
+        for i in range(1, len(dls) - 1):
 
             if hs[i - 1] < hs[i + 1]:
                 v.append((hs[i] - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])) * (
-                            (2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+                        (2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
             else:
                 v.append(
                     (hs[i] - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])) * ((2 * (
                             dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
-            if i<len(dls)-2:
+            if i < len(dls) - 2:
                 d1 = dls[i] - dls[i - 1]
                 d2 = dls[i + 1] - dls[i]
                 d3 = dls[i + 2] - dls[i + 1]
                 correcao = ((d1 + d2) * (d2 + d3) / (d2 * (d1 + d2 + d3))) ** 0.5
                 ll = 20 * np.log10(correcao)
             else:
-                ll=0
+                ll = 0
 
-            l = ll + l + fn(v[i-1])
+            l = ll + l + fn(v[i - 1])
 
     return l
 
+
 def raio_fresnel(n, d1, d2, f):
     # f em Mhertz
-    return (n * (c / (f*1000000)) * d1 * d2 / (d1 + d2)) ** 0.5
+    return (n * (c / (f * 1000000)) * d1 * d2 / (d1 + d2)) ** 0.5
+
 
 def atenuaca_vegetacao_antiga_ITU(f, d):  # F em GHz e d em metros
     L = 0.2 * (f ** 0.3) * (d ** 0.6)
@@ -86,7 +89,8 @@ def vj(teta, k, dlj, s, dl):
     return (teta / 2) * (((k / np.pi) * ((dlj * (s - dl)) / (s - dl + dlj))) ** 0.5)
 
 
-def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar):
+def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg):
+    teta = tetae + s * Ye
     C = 10  # m^2
     Q = min((k / (2 * np.pi)) * (dhs(s, Dh)), 1000) * (((he1 * he2 + C) / (hg1 * hg2 + C)) ** 0.5) + (
             dl + tetae / Ye) / s
@@ -95,6 +99,15 @@ def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar):
     Af0 = min(15, 5 * np.log10(1 + alpha * k * hg1 * hg2 * sigmahs(dls, Dh)))
     v1 = vj(teta, k, dl1, s, dl)
     v2 = vj(teta, k, dl2, s, dl)
+
+    Y0 = teta / (s - dl)
+    Y1, Y2 = Yj(he1, dl1), Yj(he2, dl2)
+    alpha0, alpha1, alpha2 = alphaj(k, Y0), alphaj(k, Y1), alphaj(k, Y2)
+    K0, K1, K2 = kj(alpha0, Zg), kj(alpha1, Zg), kj(alpha2, Zg)
+    x1, x2 = xj(alpha1, Y1, dl1, K1), xj(alpha2, Y2, dl2, K2)
+    x0 = x(alpha0, K0, teta, x1, x2)
+    Ar = g(x0) - f(x1, K1) - f(x2, K2) + c1(K0)
+
     adifv = (1 - w) * ak(v1, v2) + w * Ar + Af0
     return adifv
 
@@ -168,7 +181,7 @@ def alos(k, dls, Dh, s, md, Aed, he1, he2, Zg):
     At = -20 * np.log10(abs(1 + Re * np.exp(delta * 1j)))
 
     Alos = (1 - w) * Ad + w * At
-    return Alos,At
+    return Alos, At
 
 
 def rj(k, tetal, hej):
@@ -248,37 +261,26 @@ def ascat(s, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns, h0d=-1):
     return Ascat, H0
 
 
-def difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
+def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
     # Constante especifica #
     tetae = max((teta1 + teta2), - dl * Ye)
-    teta = tetae + s * Ye
     d3 = max(dls, dl + 1.3787 * Xae)
     d4 = d3 + 2.7574 * Xae
 
     # Efeito da curvatura da terra #
-    if s > dl:
-        Y0 = teta / (s - dl)
-        Y1, Y2 = Yj(he1, dl1), Yj(he2, dl2)
-        alpha0, alpha1, alpha2 = alphaj(k, Y0), alphaj(k, Y1), alphaj(k, Y2)
-        K0, K1, K2 = kj(alpha0, Zg), kj(alpha1, Zg), kj(alpha2, Zg)
-        x1, x2 = xj(alpha1, Y1, dl1, K1), xj(alpha2, Y2, dl2, K2)
-        x0 = x(alpha0, K0, teta, x1, x2)
-        Ar = g(x0) - f(x1, K1) - f(x2, K2) + c1(K0)
-    else:
-        Ar = 0
 
-    # Efe ito ponta de faca #
-    A3 = adif(d3, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar)
-    A4 = adif(d4, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, teta, Ar)
+    # Efeito ponta de faca #
+    A3 = adif(d3, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg)
+    A4 = adif(d4, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg)
     md = (A4 - A3) / (d4 - d3)
     Aed = A3 - md * d3
-    Aref = Aed + md * s
+    Aref = Aed + md * d
     return Aref, Aed, md
 
 
-def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
+def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
     d2 = dls
-    Arefd, Aed, md = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
     A2 = Aed + md * d2
     AK1 = 0
     AK2 = 0
@@ -344,16 +346,16 @@ def los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                 AK2 = 0
     Ael = A2 - AK1 * d2
 
-    Aref = max(0, Ael + AK1 * s + AK2 * np.log(s / dls))
+    Aref = max(0, Ael + AK1 * d + AK2 * np.log(d / dls))
     return Aref, At
 
 
-def scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns):
+def scatter_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns):
     Hs = 47.7
     Ds = 200000
     d5 = dl + Ds
     d6 = d5 + Ds
-    Arefd, Aed, md = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
 
     A5, h0d5 = ascat(d5, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns)
 
@@ -368,7 +370,7 @@ def scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, D
         Aes = Aed
         dx = 10e6
 
-    Aref = Aes + ms * s
+    Aref = Aes + ms * d
     return Aref, dx
 
 
@@ -405,11 +407,10 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     s = d
     f0 = 47.7  # em MHz.m
     k = f / f0
-    K = 4 / 3
     N0 = 320  # padaro para continenteal sub-tropical
     z1 = 9460
     N1 = 179.3
-    Ns = N0*np.exp(-h0/z1)
+    Ns = N0 * np.exp(-h0 / z1)
     Ya = 157e-9  # 1/raio
     sigma = 0.005  # S/m
     er = 15
@@ -419,7 +420,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
         Zg = ((erlinha - 1) ** 0.5) / erlinha
     else:
         Zg = (erlinha - 1) ** 0.5
-    Ye = Ya*(1-0.04555*np.exp(Ns/N1))  # curvatura efetiva da terra em m^-1
+    Ye = Ya * (1 - 0.04555 * np.exp(Ns / N1))  # curvatura efetiva da terra em m^-1
     dls1 = (2 * he1 / Ye) ** 0.5
     dls2 = (2 * he2 / Ye) ** 0.5
     dls = dls1 + dls2
@@ -438,13 +439,14 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
     tetae = max((teta1 + teta2), -dl * Ye)
     Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)
-    At=0
+    At = 0
+
     if simplificado:
         if d <= dls:
             Aref = 20 * np.log10(1 + (dl * Dh / (he1 * he2)))
         elif (d > dls) and (d <= dx):
             a = 6370 / (1 - 0.04665 * np.exp(0.005577 * Ns))
-            Aref = (1 + 0.045 * ((Dh / (c / (f*1000000))) ** 0.5) * (((a * tetae + dl) / d) ** 0.5))**(-1)
+            Aref = (1 + 0.045 * ((Dh / (c / (f * 1000000))) ** 0.5) * (((a * tetae + dl) / d) ** 0.5)) ** (-1)
         else:
             H0 = 1 / (he1 * he2 * tetae * f * abs(0.007 - 0.058 * tetae))
             Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)
@@ -470,3 +472,6 @@ def ikegami_model(h, hr, f, w=25, lr=2, th=np.pi / 2):  # f em MHz
     l = - 5.8 - 10 * np.log10(1 + (3 / (lr ** 2))) - 10 * np.log10(w) + 20 * np.log10(h - hr) + 10 * np.log10(
         np.sin(th)) + 10 * np.log10(f)
     return l
+a=[1.,2,3,4]
+
+print(a[:2])

@@ -20,12 +20,40 @@ ponto_final = ee.Geometry.Point(-22.7364, -43.5159)
 distancia_planar = ponto_inicial.distance(ponto_final).getInfo()
 print(distancia_planar)
 """
-
-ee.Initialize(project="plancom-409417")
 app = Flask(__name__)
 c = 299792458  # m/s
+a = 6378137  # m
+b = 6356752  # m
+
+Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 300,
+                "min_alt": 0}  # ITM ou Epstein-peterson
+mapas = []
 
 
+def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
+    comprimento_de_onda = c / (f * 1000000)
+    # L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
+    d = 10 ** ((limear / 20) + np.log10(comprimento_de_onda) - 1.1)
+    d = min(raio, d)
+    print(d)
+    retas = []
+    dem0, dsm0, landcover0, distancia0 = [], [], [], []
+    for i in range(int(360 * precisao)):
+        vet = np.array([np.cos(i * 2 * np.pi / (precisao * 360)), np.sin(
+            i * 2 * np.pi / (precisao * 360))])  # roda no sentido positivo trigonométrio de 0.5 em 0.5 graus
+        pf = np.array(ponto) + vet * (
+                d / unidade_distancia) * (1 / 3600)
+        print(ponto)
+        print(pf)
+        r = reta(ponto, pf)
+        dem, dsm, landcover, distancia = perfil(r, 1)
+        distancia0.append(distancia)
+        retas.append(r)
+        dem0.append(dem)
+        dsm0.append(dsm)
+        landcover0.append(landcover)
+    print('criou as retas')
+    return retas, d, dem0, dsm0, landcover0, distancia0
 
 
 def parametros_difracao(distancia, dem, ht, hr):
@@ -37,8 +65,8 @@ def parametros_difracao(distancia, dem, ht, hr):
     maxangulo = aref
     idl1 = 0
     dls = [0]
-    hs = [ht+dem[0]]
-    h, dl1, teta1 = 0,0,0
+    hs = [ht + dem[0]]
+    h, dl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
         angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
         if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
@@ -50,11 +78,10 @@ def parametros_difracao(distancia, dem, ht, hr):
         hs.append(h)
         dls.append(dl1)
 
-
     while not visada:
         angulo = []
         aref = np.arctan((- dem[idl1] - 1 + hr + demr[0]) / (d - distancia[idl1]))
-        maxangulo=aref
+        maxangulo = aref
         visada = 1
         for i in range(idl1 + 3, len(dem) - 1):
             angulo.append(np.arctan((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1])))
@@ -68,73 +95,105 @@ def parametros_difracao(distancia, dem, ht, hr):
         hs.append(h)
         dls.append(dl1)
     dls.append(d)
-    hs.append(dem[-1]+hr)
-    print(hs)
-    print(dls)
+    hs.append(dem[-1] + hr)
     return dls, hs
 
 
-def friis_free_space_loss_db(f, d):  # gt=direcionalidade*eficiencia
-    comprimento_de_onda = c / (f * 1000000)
-    L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
-    return L_db  # Esse valor é de fato uma perda
-
-
-def calcula_perda(ht, hr, f, r, raster, raster_dsm, raster_landcover):
-    dem, dsm, landcover, distancia = perfil(r, raster, raster_dsm, raster_landcover)
-
+def calcula_perda(ht, hr, f, r):
+    dem, dsm, landcover, distancia = perfil(r)
+    Densidade_urbana = 0.7
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r = obter_dados_do_perfil(
-        dem, dsm, distancia, ht, hr)
+        dem, dsm, distancia, ht, hr, Densidade_urbana)
 
     if landcover[-1] == 50:
-        urban = 'wi'
+        urb = Modelos.ikegami_model(h, hg2, f)
     else:
-        urban = 'n'
+        urb = 0
+    espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
     qs = 7  # 70% das situacões
-    espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, hr, ht, distancia, h,
-                                                     dl2, visada, area=1)
-    # colocar a cidicao para chamar itm ou urbano + espaco livre
+    espesura, h = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia)
 
+    # colocar a cidicao para chamar itm ou urbano + espaco livre
+    vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
     # print(
     #    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
-    perda = itmModel.longLq_rice_model(f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada, h,
-                                       teta1, teta2, d_urb, hb_urb, urban, polarizacao='v')
+    hmed = (dem[0] + dem[-1]) / 2
+    perda, variabilidade_situacao, At = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2,
+                                                                  Dh, visada,
+                                                                  teta1, teta2, polarizacao='v')
 
     return perda
 
 
-def modificar_e_salvar_raster(raster_path, caminho_dsm, caminho_landcover, ponto, raio, limear, ht, f):
-    # dem = ee.Image("NASA/NASADEM_HGT/001")
-    # dsm = ee.ImageCollection('JAXA/ALOS/AW3D30/V3_2').select('DSM')
-    # lcover10 = ee.ImageCollection("ESA/WorldCover/v200")
-
+def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao):
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
+    yt = 1
+    qs = 7
+    unidade_distancia = 2 * np.pi * R(ponto[1]) / (1296000)
+    retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
+                                                                       precisao)
     # Abrir o arquivo raster para leitura e escrita
-    with rasterio.open(raster_path, 'r+') as src, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
-            caminho_landcover) as raster_landcover:
+    with rasterio.open(raster_path, 'r+') as src:
         # Ler a matriz de dados do raster
         data = src.read(1)
         inv_transform = ~src.transform
-        transform = src.transform
         x, y = inv_transform * (ponto[0], ponto[1])
-        unidade_distancia = transform[0] * (10 ** 5)
-        raio = raio / unidade_distancia
 
         # Modificar o valor do ponto desejado
         for linha in range(np.shape(data)[0]):
             for coluna in range(np.shape(data)[1]):
-                if (((((linha - y) ** 2) + ((coluna - x) ** 2)) ** 0.5) < (raio - 2)) and (
-                        ((((linha - y) ** 2) + ((coluna - x) ** 2)) ** 0.5) * unidade_distancia > 200):
-                    p2lon, p2lat = transform * (coluna, linha)
-                    r = reta(ponto, (p2lon, p2lat))
-                    p = calcula_perda(ht, 2, f, r, src, raster_dsm, raster_landcover)
-                    if p >= limear:
-                        data[linha][coluna] = 100
+                distyx = ((((linha - y) ** 2) + ((coluna - x) ** 2)) ** 0.5)
+                if (distyx * unidade_distancia > 200) and (distyx < ((raio / unidade_distancia) - 3)):
+
+                    if coluna != x:
+                        if coluna > x:
+                            angulo = np.arctan((y - linha) / (coluna - x))
+                        else:
+                            angulo = np.arctan((y - linha) / (coluna - x)) + np.pi
+                    elif y > linha:
+                        angulo = np.pi / 2
                     else:
-                        data[linha][coluna] = 10
+                        angulo = 3 * np.pi / 2
+
+                    if angulo < 0:
+                        angulo = 2 * np.pi + angulo
+                    angulo2 = int((180 * angulo / np.pi) * precisao)
+                    r = retas[angulo2][:int(distyx + 1)]
+                    dem = dem0[angulo2][:int(distyx + 1)]
+                    dsm = dsm0[angulo2][:int(distyx + 1)]
+                    landcover = landcover0[angulo2][:3 * int(distyx) + 1]
+                    distancia = distancia0[angulo2][:int(distyx + 1)]
+
+                    Densidade_urbana = 0.7
+                    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r = obter_dados_do_perfil(
+                        dem, dsm, distancia, ht, hr, Densidade_urbana)
+                    hmed = (dem[0] + dem[-1]) / 2
+
+                    if visada:
+                        data[linha][coluna] = 2
+                    else:
+                        if (landcover[-1] == 50) and (h_urb > hg2 + 0.5):
+                            urb = Modelos.ikegami_model(h_urb, hg2, f)
+                        else:
+                            urb = 0
+                        perda, variabilidade_situacao, At = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d,
+                                                                                      yt, qs, dl1,
+                                                                                      dl2,
+                                                                                      Dh, visada,
+                                                                                      teta1, teta2, polarizacao='v')
+
+                        espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+                        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia)
+                        vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+                        p = espaco_livre + perda + variabilidade_situacao + urb + vegetacao
+
+                        if p <= limear:
+                            data[linha][coluna] = 2
+                        else:
+                            data[linha][coluna] = 100
                 else:
                     data[linha][coluna] = 100
 
@@ -215,7 +274,7 @@ def reta(p1, p2):
     p2 = np.array(p2)
     v = p2 - p1
     modulo = np.linalg.norm(v)
-    n = int(np.ceil(modulo / 0.000277777777777778))  # precisao de 30 m
+    n = int(np.ceil(modulo / 0.00027776))  # precisao de 30 m
     t = np.linspace(0, 1, n)
     r = []
     for i in t:
@@ -224,62 +283,91 @@ def reta(p1, p2):
     return r
 
 
-a = 6378137
-b = 6356752
-
-
 def R(lat):
     return (((((a ** 2) * np.cos(lat * np.pi / 180)) ** 2) + (((b ** 2) * np.sin(lat * np.pi / 180)) ** 2)) / (
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
-def perfil(r, src, src_dsm, src_landcover):
-    raster = src.read(1)
-    raster_dsm = src_dsm.read(1)
-    raster_landcover = src_landcover.read(1)
-    inv_transform = ~src.transform
-    inv_transform_dsm = ~src_dsm.transform
-    inv_transform_landcover = ~src_landcover.transform
+def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
+    caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
+    with rasterio.open(caminho) as src, rasterio.open(caminho_dsm) as src_dsm, rasterio.open(
+            caminho_landcover) as src_landcover:
+        raster = src.read(1)
+        raster_dsm = src_dsm.read(1)
+        raster_landcover = src_landcover.read(1)
+        inv_transform = ~src.transform
+        inv_transform_dsm = ~src_dsm.transform
+        inv_transform_landcover = ~src_landcover.transform
+
+        for i in range(np.shape(r)[0]):
+            if (np.floor(r[i][0]) == np.floor(r[indice_atual][0])) and (
+                    np.floor(r[i][1]) == np.floor(r[indice_atual][1])):
+                pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
+                pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
+                pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
+                dist = distancia * i
+                if area:
+                    alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+                    alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                else:
+                    alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][
+                        int(np.floor(pixel_x1))] + (
+                                       pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
+                                   int(np.floor(pixel_x1))] + (
+                                       pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][
+                                   int(np.ceil(pixel_x1))]) / 2
+
+                    alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                        int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
+                               raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.floor(pixel_x1_dsm))] + (
+                                       pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
+                                   int(np.ceil(pixel_x1_dsm))]) / 2
+
+                d.append(dist)
+                dem.append(alt_dem)
+                dsm.append(alt_dsm)
+                landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+
+                if i < np.shape(r)[0] - 1:
+                    lonpasso = (r[i + 1][0] - r[i][0]) / 3
+                    latpasso = (r[i + 1][1] - r[i][1]) / 3
+                    pixel_x2_lancover, pixel_y2_landcover = inv_transform_landcover * (
+                        r[i][0] + lonpasso, r[i][1] + latpasso)
+                    pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
+                        r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
+                    landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                    landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
+                indice_atual = i
+            else:
+                indice_atual = i
+                break
+    return dem, dsm, landcover, d, indice_atual
+
+
+def perfil(r, area=0):
     unidade_distancia = 2 * np.pi * R(r[0][1]) / (1296000)
-    x0, y0 = inv_transform * (r[0][0], r[0][1])
+    indice_atual = 0
     dem = []
     dsm = []
     landcover = []
-    pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
-    distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (np.shape(r)[0] - 1)
     d = []
-    for i in range(np.shape(r)[0]):
-        pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
-        pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
-        pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
-        dist = distancia * i
-        alt_dem = ((1 - (pixel_y1 - np.floor(pixel_y1))) * raster[int(np.floor(pixel_y1))][int(np.floor(pixel_x1))] + (
-                pixel_y1 - np.floor(pixel_y1)) * raster[int(np.ceil(pixel_y1))][int(np.floor(pixel_x1))] + (
-                           1 - (pixel_x1 - np.floor(pixel_x1))) * raster[int(np.floor(pixel_y1))][
-                       int(np.floor(pixel_x1))] + (
-                           pixel_x1 - np.floor(pixel_x1)) * raster[int(np.floor(pixel_y1))][int(np.ceil(pixel_x1))]) / 2
+    caminho, caminho_dsm, caminho_landcover = obter_raster(r[0], r[0])
+    with rasterio.open(caminho) as src:
+        inv_transform = ~src.transform
+        pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
+        x0, y0 = inv_transform * (r[0][0], r[0][1])
+        distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (
+                np.shape(r)[0] - 1)
 
-        alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-            int(np.floor(pixel_x1_dsm))] + (
-                           pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
-                       int(np.floor(pixel_x1_dsm))] + (
-                           1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                       int(np.floor(pixel_x1_dsm))] + (
-                           pixel_x1_dsm - np.floor(pixel_x1_dsm)) * raster_dsm[int(np.floor(pixel_y1_dsm))][
-                       int(np.ceil(pixel_x1_dsm))]) / 2
-
-        d.append(dist)
-        dem.append(alt_dem)
-        dsm.append(alt_dsm)
-        landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
-        if i < np.shape(r)[0] - 1:
-            lonpasso = (r[i + 1][0] - r[i][0]) / 3
-            latpasso = (r[i + 1][1] - r[i][1]) / 3
-            pixel_x2_lancover, pixel_y2_landcover = inv_transform_landcover * (r[i][0] + lonpasso, r[i][1] + latpasso)
-            pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
-                r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
-            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-            landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
+    while indice_atual < np.shape(r)[0] - 1:
+        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
+                                                                     area)
 
     return dem, dsm, landcover, d
 
@@ -386,14 +474,14 @@ def unir_raster(raster1, raster2, ref):
                 file1 = aterar_caracter(raster1, 6, str(int(raster1[6]) + 1))
                 file3 = aterar_caracter(file4, 6, str(int(file4[6]) + 1))
 
-    file1 = os.path.join('C:\PythonFlask\PlanCom\Raster', file1)
-    file2 = os.path.join('C:\PythonFlask\PlanCom\Raster', file2)
-    file3 = os.path.join('C:\PythonFlask\PlanCom\Raster', file3)
-    file4 = os.path.join('C:\PythonFlask\PlanCom\Raster', file4)
-    file1dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file1)
-    file2dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file2)
-    file3dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file3)
-    file4dsm = os.path.join('C:\PythonFlask\PlanCom\dsm', file4)
+    file1 = os.path.join('Raster', file1)
+    file2 = os.path.join('Raster', file2)
+    file3 = os.path.join('Raster', file3)
+    file4 = os.path.join('Raster', file4)
+    file1dsm = os.path.join('dsm', file1)
+    file2dsm = os.path.join('dsm', file2)
+    file3dsm = os.path.join('dsm', file3)
+    file4dsm = os.path.join('dsm', file4)
     rasterdsm = unir_raster2x2(file1dsm, file2dsm, file3dsm, file4dsm)
     rasterdem = unir_raster2x2(file1, file2, file3, file4)
     return rasterdem, rasterdsm
@@ -469,9 +557,9 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster2 = raster2 + we2 + '00' + lon2
 
     if raster1 == raster2:
-        return str(os.path.join('C:\PythonFlask\PlanCom\Raster', raster1 + '.tif')), str(
-            os.path.join('C:\PythonFlask\PlanCom\dsm', raster1 + '.tif')), str(
-            os.path.join('C:\PythonFlask\PlanCom\LandCover', raster_landcover + '.tif'))
+        return str(os.path.join('Raster', raster1 + '.tif')), str(
+            os.path.join('dsm', raster1 + '.tif')), str(
+            os.path.join('LandCover', raster_landcover + '.tif'))
     else:
         ref = ''
         if (we1 == 'W' and lon1 > lon2) or (we1 == 'E' and lon1 < lon2):
@@ -487,7 +575,7 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster, rasterdsm = unir_raster(raster1, raster2, ref)
 
         return raster, rasterdsm, str(
-            os.path.join('C:\PythonFlask\PlanCom\LandCover', raster_landcover + '.tif'))
+            os.path.join('LandCover', raster_landcover + '.tif'))
 
 
 def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
@@ -544,7 +632,7 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
     return he1, he2, Dh
 
 
-def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
+def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     angulo = []
     angulor = []
     demr = dem[::-1]
@@ -554,6 +642,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
     visada = 1  # 'visada# '
     visadar = 1
     indice_visada_r = 0
+    indice_visada = 0
     dl1, dl2, teta1, teta2 = d, d, None, None
     maxangulo = aref
     maxangulor = -aref
@@ -563,6 +652,8 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
         if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
             teta1, dl1, idl1 = angulo[i - 1], distancia[i], i
             visada = 0
+            indice_visada = idl1
+
         maxangulo = max(angulo)
 
     for i in range(1, len(demr) - 1):
@@ -577,32 +668,24 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h = max(0, 1.5 * np.mean(dsm[-4:len(dsm)]) - np.mean(dem[-4:len(dem)]))
+    h_urb = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
 
-    return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r
+    return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
 
-def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, visada, area=0):
-    if visada:
-        d_urb = distancia[-1]
-    else:
-        d_urb = dl2
-
-    if landcover[-1] != 50:
-        h = 0
+def obter_vegeta_atravessada1(f, indice, dem, landcover, dsm, hr, ht, distancia):
     dem = np.array(dem)
     dsm = np.array(dsm)
 
     altur_da_cobertuta = dsm[indice:] - dem[indice:]
     espesura = 0
-    # d_urb = ((len(dem) - indice) * distancia[1])
     if indice == 0:
-        m = -(dem[indice] + ht - dem[-1] - hr) / distancia[-1]
-        c = (dem[indice] + ht - dem[-1] - hr)
+        m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
+        c = (dem[0] + ht - dem[-1] - hr)
         x = np.array(distancia)
         y = m * x + c
         los = y - (dem - (dem[-1] + hr))
-        hb_urb = dem[0] - dem[-1] + ht
+
     else:
         rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
         m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
@@ -611,15 +694,75 @@ def get_dados_landcover(indice, dem, landcover, dsm, hr, ht, distancia, h, dl2, 
         x = x - distancia[indice]
         y = m * x + c
         los = y - (dem[indice:] - (dem[-1] + hr))
-        hb_urb = dem[indice] - dem[-1]
-
     for i in range(len(los) - 1):
         if los[i] < altur_da_cobertuta[i]:
             for n in (0, 1, 2):
                 if landcover[3 * indice + i + n] == 10:
                     espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
 
-    return espesura, h, d_urb, hb_urb
+    return espesura
+
+
+def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, indice_d):
+    dem = np.array(dem)
+    dsm = np.array(dsm)
+
+    altur_da_cobertuta = dsm[indice:] - dem[indice:]
+    espesura = 0
+    if indice == 0:
+        m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
+        c = (dem[0] + ht - dem[-1] - hr)
+        x = np.array(distancia)
+        if c < 0:
+            y = m * x
+            los = y - (dem - (dem[0] + ht))
+        else:
+            y = m * x + c
+            los = y - (dem - (dem[-1] + hr))
+        for i in range(len(los) - 1):
+            if los[i] < altur_da_cobertuta[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * (indice + i) + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+
+
+    else:
+        rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
+        m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
+        c = (rfresn + dem[indice] - dem[-1] - hr)
+        x = np.array(distancia[indice:])
+        x = x - distancia[indice]
+        if c < 0:
+            y = m * x
+            los = y - (dem[indice:] - (dem[indice] + rfresn))
+        else:
+            y = m * x + c
+            los = y - (dem[indice:] - (dem[-1] + hr))
+
+        m2 = -(dem[0] + ht - dem[indice_d] - rfresn) / distancia[indice_d]
+        c2 = (dem[0] + ht - dem[indice_d] - rfresn)
+        x2 = np.array(distancia[:indice_d])
+        if c2 < 0:
+            y2 = m2 * x2
+            los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
+        else:
+            y2 = m2 * x2 + c2
+            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn))
+
+        for i in range(len(los) - 1):
+            if los[i] < altur_da_cobertuta[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * (indice_d + i) + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        altur_da_cobertuta2 = dsm[:indice_d] - dem[:indice_d]
+        print(espesura)
+        for i in range(len(los2) - 2):
+            if los2[i] < altur_da_cobertuta2[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * i + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        print(espesura)
+    return espesura
 
 
 cobertura = []
@@ -632,39 +775,43 @@ caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 r = reta(p1, p2)
 f = float(800)
-ime = 2
-PDC = 22
+ime = 10
+PDC = 40
+hg1 = PDC
+hg2 = ime
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
         caminho_landcover) as raster_landcover:
-    dem, dsm, landcover, distancia = perfil(r, raster, raster_dsm, raster_landcover)
+    dem, dsm, landcover, distancia = perfil(r)
 
-d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r = obter_dados_do_perfil(
-    dem, dsm, distancia, PDC, ime)
+Densidade_urbana = 0.7
+d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
+                                                                                                          distancia,
+                                                                                                          hg1, hg2,
+                                                                                                          Densidade_urbana)
 if landcover[-1] == 50:
     urban = 'wi'
 else:
     urban = 'n'
 yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
 qs = 7  # 70% das situacões
-espesura, h, d_urb, hb_urb = get_dados_landcover(indice_visada_r, dem, landcover, dsm, ime, PDC, distancia, h,
-                                                 dl2, visada)
+espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
 # colocar a cidicao para chamar itm ou urbano + espaco livre
 
 print(
-    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h},{teta1}, {teta2}, {d_urb}, {hb_urb}, {urban})')
+    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
 
 h0 = (dem[0] + dem[-1]) / 2
 
-dls,hs = parametros_difracao(distancia, dem, hg1, hg2)
-perda_difrac = Modelos.modelo_epstein_peterson(dls, hs,f)
+dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+perda_difrac = Modelos.modelo_epstein_peterson(dls, hs, f)
 
 perda = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                   teta1, teta2, polarizacao='v', simplificado=0)
 
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
 
-if urban == 'wi' and h > hg2 + 0.5:
-    urb = Modelos.ikegami_model(h, hg2, f)
+if urban == 'wi' and h_urb > hg2 + 0.5:
+    urb = Modelos.ikegami_model(h_urb, hg2, f)
 else:
     urb = 0
 
@@ -681,4 +828,3 @@ plt.plot(distancia, dem)
 plt.title('Modelo Digital de Elevação (DEM)')
 
 plt.show()
-

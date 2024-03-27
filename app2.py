@@ -164,7 +164,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     distancia = distancia0[angulo2][:int(distyx+1)]
 
                     Densidade_urbana = 0.7
-                    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r = obter_dados_do_perfil(
+                    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
                     hmed = (dem[0] + dem[-1]) / 2
 
@@ -182,7 +182,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                                                                                       teta1, teta2, polarizacao='v')
 
                         espaco_livre = Modelos.friis_free_space_loss_db(f, d)
-                        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia)
+                        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia, indice_visada)
                         vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
                         p = espaco_livre + perda + variabilidade_situacao + urb + vegetacao
 
@@ -640,11 +640,13 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     dl1, dl2, teta1, teta2 = d, d, None, None
     maxangulo = aref
     maxangulor = -aref
+    indice_visada=0
 
     for i in range(1, len(dem) - 1):
         angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
         if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
             teta1, dl1, idl1 = angulo[i - 1], distancia[i], i
+            indice_visada=idl1
             visada = 0
         maxangulo = max(angulo)
 
@@ -662,36 +664,70 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     h_urb = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
 
-    return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r
+    return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
 
-def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia):
+def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, indice_d):
     dem = np.array(dem)
     dsm = np.array(dsm)
 
     altur_da_cobertuta = dsm[indice:] - dem[indice:]
     espesura = 0
     if indice == 0:
-        m = -(dem[indice] + ht - dem[-1] - hr) / distancia[-1]
-        c = (dem[indice] + ht - dem[-1] - hr)
+        m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
+        c = (dem[0] + ht - dem[-1] - hr)
         x = np.array(distancia)
-        y = m * x + c
-        los = y - (dem - (dem[-1] + hr))
+        if c < 0:
+            y = m * x
+            los = y - (dem - (dem[0] + ht))
+        else:
+            y = m * x + c
+            los = y - (dem - (dem[-1] + hr))
+        for i in range(len(los) - 1):
+            if los[i] < altur_da_cobertuta[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * (indice + i) + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+
+
     else:
         rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
         m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
         c = (rfresn + dem[indice] - dem[-1] - hr)
         x = np.array(distancia[indice:])
         x = x - distancia[indice]
-        y = m * x + c
-        los = y - (dem[indice:] - (dem[-1] + hr))
+        if c < 0:
+            y = m * x
+            los = y - (dem[indice:] - (dem[indice] + rfresn))
+        else:
+            y = m * x + c
+            los = y - (dem[indice:] - (dem[-1] + hr))
 
-    for i in range(len(los) - 1):
-        if los[i] < altur_da_cobertuta[i]:
-            for n in (0, 1, 2):
-                if landcover[3 * indice + i + n] == 10:
-                    espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        m2 = -(dem[0] + ht - dem[indice_d] - rfresn) / distancia[indice_d]
+        c2 = (dem[0] + ht - dem[indice_d] - rfresn)
+        x2 = np.array(distancia[:indice_d])
+        if c2 < 0:
+            y2 = m2 * x2
+            los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
+        else:
+            y2 = m2 * x2 + c2
+            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn))
+
+        for i in range(len(los) - 1):
+            if los[i] < altur_da_cobertuta[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * (indice_d + i) + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        altur_da_cobertuta2 = dsm[:indice_d] - dem[:indice_d]
+        print(espesura)
+        for i in range(len(los2) - 2):
+            if los2[i] < altur_da_cobertuta2[i]:
+                for n in (0, 1, 2):
+                    if landcover[3 * i + n] == 10:
+                        espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        print(espesura)
     return espesura
+
 
 
 
@@ -845,7 +881,7 @@ def ptp():
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia = perfil(r)
             Densidade_urbana = 0.7
-            d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r = obter_dados_do_perfil(
+            d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
             if landcover[-1] == 50:
                 urban = 'wi'
@@ -854,7 +890,7 @@ def ptp():
             yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
             qs = 7  # 70% das situacões
 
-            espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia)
+            espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia, indice_visada)
             # colocar a cidicao para chamar itm ou urbano + espaco livre
 
             print(
