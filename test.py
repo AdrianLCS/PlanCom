@@ -738,16 +738,16 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         else:
             y = m * x + c
             los = y - (dem[indice:] - (dem[-1] + hr))
-
-        m2 = -(dem[0] + ht - dem[indice_d] - rfresn) / distancia[indice_d]
-        c2 = (dem[0] + ht - dem[indice_d] - rfresn)
+        rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[indice_d], f)
+        m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
+        c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
         x2 = np.array(distancia[:indice_d])
         if c2 < 0:
             y2 = m2 * x2
             los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
         else:
             y2 = m2 * x2 + c2
-            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn))
+            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn2))
 
         for i in range(len(los) - 1):
             if los[i] < altur_da_cobertuta[i]:
@@ -775,8 +775,8 @@ caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 r = reta(p1, p2)
 f = float(800)
-ime = 10
-PDC = 40
+ime = 5
+PDC = 140
 hg1 = PDC
 hg2 = ime
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(

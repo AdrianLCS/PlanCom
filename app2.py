@@ -98,7 +98,7 @@ def parametros_difracao(distancia, dem, ht, hr):
 def calcula_perda(ht, hr, f, r):
     dem, dsm, landcover, distancia = perfil(r)
     Densidade_urbana = 0.7
-    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r = obter_dados_do_perfil(
+    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
         dem, dsm, distancia, ht, hr, Densidade_urbana)
 
     if landcover[-1] == 50:
@@ -109,7 +109,7 @@ def calcula_perda(ht, hr, f, r):
 
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
     qs = 7  # 70% das situacões
-    espesura, h = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia)
+    espesura, h = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia, indice_visada)
 
     # colocar a cidicao para chamar itm ou urbano + espaco livre
     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
@@ -702,16 +702,16 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         else:
             y = m * x + c
             los = y - (dem[indice:] - (dem[-1] + hr))
-
-        m2 = -(dem[0] + ht - dem[indice_d] - rfresn) / distancia[indice_d]
-        c2 = (dem[0] + ht - dem[indice_d] - rfresn)
+        rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[indice_d], f)
+        m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
+        c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
         x2 = np.array(distancia[:indice_d])
         if c2 < 0:
             y2 = m2 * x2
             los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
         else:
             y2 = m2 * x2 + c2
-            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn))
+            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn2))
 
         for i in range(len(los) - 1):
             if los[i] < altur_da_cobertuta[i]:
@@ -731,9 +731,9 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
 
 
 
-cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'Raster\S23W044.tif',
-             'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
 
+cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif','f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
+#cobertura=[]
 def addfoliun():
     global Configuracao
     escala_de_altura = [Configuracao["min_alt"], Configuracao["max_alt"]]
@@ -939,9 +939,7 @@ def area():
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr, float(request.form.get("f")), precisao)
 
         img = criaimg(caminho)
-        cobertura.append(
-            {'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho,
-             'f': float(request.form.get("f")), 'img': img, 'h': ht})
+        cobertura.append({'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho, 'f': float(request.form.get("f")), 'img': img, 'h': ht})
     return render_template('area.html')
 
 
