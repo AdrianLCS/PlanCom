@@ -26,13 +26,14 @@ def modelo_epstein_peterson(dls, hs, f):
         for i in range(1, len(dls) - 1):
 
             if hs[i - 1] < hs[i + 1]:
-                v.append((hs[i] - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])) * (
-                        (2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+                href= (hs[i] - hs[i - 1]) - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])
+                print(href)
+                v.append(href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
             else:
-                v.append(
-                    (hs[i] - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])) * ((2 * (
-                            dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+                href = (hs[i]-hs[i + 1]) - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])
+                print(href)
+                v.append(href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
             if i < len(dls) - 2:
                 d1 = dls[i] - dls[i - 1]

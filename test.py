@@ -57,44 +57,47 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
 
 def parametros_difracao(distancia, dem, ht, hr):
     angulo = []
-    demr = dem[::-1]
     d = distancia[-1]
-    aref = np.arctan((-ht - dem[0] + hr + demr[0]) / d)
+    aref = (hr + dem[-1] -ht - dem[0]) / d
     visada = 1  # 'visada# '
     maxangulo = aref
-    idl1 = 0
     dls = [0]
     hs = [ht + dem[0]]
-    h, dl1, teta1 = 0, 0, 0
+    h, idl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
-        angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
+        angulo.append((dem[i] - (dem[0] + ht)) / distancia[i])
         if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
-            dl1, idl1 = distancia[i], i
+            idl1 = i
             h = dem[i]
             visada = 0
         maxangulo = max(angulo)
     if not visada:
         hs.append(h)
-        dls.append(dl1)
+        dls.append(distancia[idl1])
 
     while not visada:
+        idll=[idl1]
         angulo = []
-        aref = np.arctan((- dem[idl1] - 1 + hr + demr[0]) / (d - distancia[idl1]))
+        aref = ( hr + dem[-1] - dem[idl1]) / (d - distancia[idl1])
         maxangulo = aref
         visada = 1
         for i in range(idl1 + 3, len(dem) - 1):
-            angulo.append(np.arctan((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1])))
-            if (angulo[i - idl1 - 3] > aref) and (angulo[i - idl1 - 3] > maxangulo):
-                dl1, idl1 = distancia[i], i
+            angulo.append((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1]))
+            if  (angulo[-1] > maxangulo):
+                idll.append(i)
                 h = dem[i]
                 visada = 0
-            maxangulo = max(angulo)
+                maxangulo = max(angulo)
+
+        idl1 = idll[-1]
         if visada:
             break
         hs.append(h)
-        dls.append(dl1)
+        dls.append(distancia[idl1])
     dls.append(d)
     hs.append(dem[-1] + hr)
+    print(hs)
+    print(dls)
     return dls, hs
 
 
@@ -623,20 +626,19 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
 
     for i in range(1, len(dem) - 1):
         angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
-        if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
+        if angulo[-1] > maxangulo:
             teta1, dl1, idl1 = angulo[i - 1], distancia[i], i
             visada = 0
             indice_visada = idl1
-
-        maxangulo = max(angulo)
+            maxangulo = max(angulo)
 
     for i in range(1, len(demr) - 1):
         angulor.append(np.arctan((demr[i] - (demr[0] + hr)) / distancia[i]))
-        if (angulor[i - 1] > -aref) and (angulor[i - 1] > maxangulor):
+        if angulor[-1] > maxangulor:
             teta2, dl2, idl2 = angulor[i - 1], distancia[i], i
             visadar = 0
             indice_visada_r = len(demr) - (i + 1)
-        maxangulor = max(angulor)
+            maxangulor = max(angulor)
     visada = max(visada, visadar)
 
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
@@ -736,8 +738,25 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
         print(espesura)
-    return espesura
+        if indice-indice_d > 4:
+            altur_da_cobertuta3 = dsm[indice_d:indice] - dem[indice_d:indice]
+            m3 = -(dem[indice_d] + rfresn2 - dem[indice] - rfresn) / (distancia[indice]-distancia[indice_d])
+            c3 = (dem[indice_d] + rfresn2 - dem[indice] - rfresn)
+            x3 = np.array(distancia[indice_d:indice]) - distancia[indice_d]
 
+            if c3 < 0:
+                y3 = m3 * x3
+                los3 = y3 - (dem[indice_d:indice] - (dem[indice_d] + rfresn2))
+            else:
+                y3 = m3 * x3 + c3
+                los3 = y3 - (dem[indice_d:indice] - (dem[indice] + rfresn))
+            for i in range(len(los3) - 1):
+                if los3[i] < altur_da_cobertuta3[i]:
+                    for n in (0, 1, 2):
+                        if landcover[3 * i + n] == 10:
+                            espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+            print(espesura)
+    return espesura
 
 cobertura = []
 markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
@@ -748,8 +767,8 @@ p2 = (markers[0]['lon'], markers[0]['lat'])
 caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 f = float(800)
-ime = 12
-PDC = 40
+ime = 1000
+PDC = 1000
 hg1 = PDC
 hg2 = ime
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
