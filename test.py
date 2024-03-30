@@ -753,7 +753,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i +indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
             print(espesura)
-    return espesura
+    return 0.5*espesura
 
 cobertura = []
 markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
@@ -764,8 +764,8 @@ p2 = (markers[0]['lon'], markers[0]['lat'])
 caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 f = float(800)
-ime = 10
-PDC = 45
+ime = 5
+PDC = 22.5
 hg1 = PDC
 hg2 = ime
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
@@ -793,6 +793,7 @@ h0 = (dem[0] + dem[-1]) / 2
 
 dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
 perda_difrac = Modelos.modelo_epstein_peterson(dls, hs, f)
+op=Modelos.opcional_ar(f,(4/3)*157*10**(-9),d,he1,he2)
 
 perda = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                   teta1, teta2, polarizacao='v', simplificado=0)

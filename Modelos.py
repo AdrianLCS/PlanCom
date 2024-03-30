@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 c = 299792458  # m/s
 
@@ -89,11 +88,12 @@ def vj(teta, k, dlj, s, dl):
     return (teta / 2) * (((k / np.pi) * ((dlj * (s - dl)) / (s - dl + dlj))) ** 0.5)
 
 
-def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg):
+def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg, f0):
     teta = tetae + s * Ye
     C = 10  # m^2
     Q = min((k / (2 * np.pi)) * (dhs(s, Dh)), 1000) * (((he1 * he2 + C) / (hg1 * hg2 + C)) ** 0.5) + ((
-            dl + tetae / Ye) / s)
+                                                                                                              dl + (
+                                                                                                              tetae / Ye)) / s)
     w = 1 / (1 + 0.1 * (Q ** 0.5))
     alpha = 4.7e-4  # m^2
     Af0 = min(15, 5 * np.log10(1 + alpha * k * hg1 * hg2 * sigmahs(dls, Dh)))
@@ -108,12 +108,14 @@ def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg):
     x0 = x(alpha0, K0, teta, x1, x2)
     Ar = g(x0) - f(x1, K1) - f(x2, K2) - 20  # c1(K0) = 20
 
+    # op = opcional_ar(f0, Ye, s, he1, he2)
     adifv = (1 - w) * ak(v1, v2) + w * Ar + Af0
+
     return adifv
 
 
 def Yj(hej, dlj):
-    valor = (2 * hej) / (dlj ** 2) #max(1e-12, (2 * hej) / (dlj ** 2))
+    valor = (2 * hej) / (dlj ** 2)  # max(1e-12, (2 * hej) / (dlj ** 2))
     return valor
 
 
@@ -257,26 +259,58 @@ def ascat(s, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns, h0d=-1):
     return Ascat, H0
 
 
-def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
+def opcional_ar(f, Ye, d, h1, h2, polarizacao='v', sigma=0.005, er=15):
+    Ye = Ye * 1000  # curvatur aem km^-1
+    d=d/1000 # em km
+    Kh = 0.36 * ((f / Ye) ** (- 1 / 3)) * ((((er - 1) ** 2) + ((18000 * sigma / f) ** 2)) ** (-0.25))
+    Kv = Kh * (((er ** 2) + ((18000 * sigma / f) ** 2)) ** 0.5)
+    if polarizacao == 'v':
+        K = Kv
+    else:
+        K = Kh
+    beta = (1 + 1.6 * (K ** 2) + 0.67 * (K ** 4)) / (1 + 4.5 * (K ** 2) + 1.53 * (K ** 4))
+    X = 2.188 * beta * (f ** (1 / 3)) * (Ye ** (2 / 3)) * d
+    Y1 = 9.575 * (10 ** (-3)) * beta * (f ** (2 / 3)) ** (Ye ** (1 / 3)) * h1
+    Y2 = 9.575 * (10 ** (-3)) * beta * (f ** (2 / 3)) ** (Ye ** (1 / 3)) * h2
+    if X >= 1.6:
+        Fx = 11 + 10 * np.log10(X) - 17.6 * X
+    else:
+        Fx = -20 * np.log10(X) - 5.6488 * (X ** 1.425)
+    B1 = beta * Y1
+    if B1 > 2:
+        Gy1 = 17.6 * ((B1 - 1.1) ** 0.5) - 5 * np.log10(B1 - 1.1) - 8
+    else:
+        Gy1 = 20 * np.log10(B1 + 0.1 * (B1 ** 3))
+
+
+    B2 = beta * Y2
+    if B2 > 2:
+        Gy2 = 17.6 * ((B2 - 1.1) ** 0.5) - 5 * np.log10(B2 - 1.1) - 8
+    else:
+        Gy2 = 20 * np.log10(B2 + 0.1 * (B2 ** 3))
+
+    return -Fx - Gy1 - Gy2
+
+
+def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f):
     # Constante especifica #
     tetae = max((teta1 + teta2), - dl * Ye)
     d3 = max(dls, dl + 1.3787 * Xae)
     d4 = d3 + 2.7574 * Xae
 
     # Efeito da curvatura da terra #
-
     # Efeito ponta de faca #
-    A3 = adif(d3, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg)
-    A4 = adif(d4, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg)
+    A3 = adif(d3, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg, f)
+    A4 = adif(d4, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg, f)
     md = (A4 - A3) / (d4 - d3)
     Aed = A3 - md * d3
     Aref = Aed + md * d
     return Aref, Aed, md
 
 
-def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae):
+def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f):
     d2 = dls
-    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f)
     A2 = Aed + md * d2
     AK1 = 0
     AK2 = 0
@@ -346,16 +380,17 @@ def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
     return Aref, At
 
 
-def scatter_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns):
+def scatter_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f):
     Hs = 47.7
     Ds = 200000
     d5 = dl + Ds
     d6 = d5 + Ds
-    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f)
 
     A5, h0d5 = ascat(d5, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns)
 
     A6, h0d6 = ascat(d6, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns, h0d5)
+
 
     if A5 < 1000:
         ms = (A6 - A5) / Ds
@@ -407,7 +442,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     z1 = 9460
     N1 = 179.3
     Ns = N0 * np.exp(-h0 / z1)
-    Ya = 157e-9  # 1/raio
+    Ya = 157*10**(-9) # 1/raio
     sigma = 0.005  # S/m
     er = 15
     Z0 = 376.62  # Ohms
@@ -434,9 +469,8 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
 
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
     tetae = max((teta1 + teta2), -dl * Ye)
-    Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)
+    Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f)
     At = 0
-
     if simplificado:
         if d <= dls:
             Aref = 20 * np.log10(1 + (dl * Dh / (he1 * he2)))
@@ -446,13 +480,14 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
         else:
             H0 = 1 / (he1 * he2 * tetae * f * abs(0.007 - 0.058 * tetae))
             Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)
+
     else:
         if d <= dls:
-            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)
+            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f)
         elif (d > dls) and (d <= dx):
-            Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae)[0]
+            Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f)[0]
         else:
-            Aref = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns)[0]
+            Aref = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f)[0]
 
     yts = atenuaco_por_icertezas_sitacao(qs, he1, he2, k, d, yt)
 
