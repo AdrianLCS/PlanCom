@@ -55,11 +55,11 @@ def parametros_difracao(distancia, dem, ht, hr):
     h, idl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
         angulo.append((dem[i] - (dem[0] + ht)) / distancia[i])
-        if (angulo[i - 1] > aref) and (angulo[i - 1] > maxangulo):
+        if angulo[-1] > maxangulo:
             idl1 = i
             h = dem[i]
             visada = 0
-        maxangulo = max(angulo)
+            maxangulo = max(angulo)
     if not visada:
         hs.append(h)
         dls.append(distancia[idl1])
@@ -85,6 +85,7 @@ def parametros_difracao(distancia, dem, ht, hr):
     dls.append(d)
     hs.append(dem[-1] + hr)
     return dls, hs
+
 
 
 def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao):
@@ -674,7 +675,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         else:
             y = m * x + c
             los = y - (dem[indice:] - (dem[-1] + hr))
-        rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[indice_d], f)
+        rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[-1] - distancia[indice_d], f)
         m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
         c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
         x2 = np.array(distancia[:indice_d])
@@ -713,11 +714,10 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             for i in range(len(los3) - 1):
                 if los3[i] < altur_da_cobertuta3[i]:
                     for n in (0, 1, 2):
-                        if landcover[3 * i + n] == 10:
+                        if landcover[3 * (i +indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
             print(espesura)
     return espesura
-
 
 cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
               'img': 'Raster\modificado\AS23W044.png', 'h': 10}]

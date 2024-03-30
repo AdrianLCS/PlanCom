@@ -5,7 +5,6 @@ c = 299792458  # m/s
 
 
 def difraclos(v):
-    print(v)
     if (v < 0):
         return -20 * np.log10(0.5 - 0.62 * v)
     elif (v >= 0) and (v < 1):
@@ -26,14 +25,14 @@ def modelo_epstein_peterson(dls, hs, f):
         for i in range(1, len(dls) - 1):
 
             if hs[i - 1] < hs[i + 1]:
-                href= (hs[i] - hs[i - 1]) - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])
-                print(href)
-                v.append(href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+                href = (hs[i] - hs[i - 1]) - (hs[i + 1] - hs[i - 1]) * (dls[i] - dls[i - 1]) / (dls[i + 1] - dls[i - 1])
+                v.append(
+                    href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
             else:
-                href = (hs[i]-hs[i + 1]) - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])
-                print(href)
-                v.append(href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
+                href = (hs[i] - hs[i + 1]) - (hs[i - 1] - hs[i + 1]) * (dls[i + 1] - dls[i]) / (dls[i + 1] - dls[i - 1])
+                v.append(
+                    href * ((2 * (dls[i] + (dls[i + 1] - dls[i])) / (lambd * dls[i] * (dls[i + 1] - dls[i]))) ** 0.5))
 
             if i < len(dls) - 2:
                 d1 = dls[i] - dls[i - 1]
@@ -93,8 +92,8 @@ def vj(teta, k, dlj, s, dl):
 def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg):
     teta = tetae + s * Ye
     C = 10  # m^2
-    Q = min((k / (2 * np.pi)) * (dhs(s, Dh)), 1000) * (((he1 * he2 + C) / (hg1 * hg2 + C)) ** 0.5) + (
-            dl + tetae / Ye) / s
+    Q = min((k / (2 * np.pi)) * (dhs(s, Dh)), 1000) * (((he1 * he2 + C) / (hg1 * hg2 + C)) ** 0.5) + ((
+            dl + tetae / Ye) / s)
     w = 1 / (1 + 0.1 * (Q ** 0.5))
     alpha = 4.7e-4  # m^2
     Af0 = min(15, 5 * np.log10(1 + alpha * k * hg1 * hg2 * sigmahs(dls, Dh)))
@@ -107,14 +106,14 @@ def adif(s, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg):
     K0, K1, K2 = kj(alpha0, Zg), kj(alpha1, Zg), kj(alpha2, Zg)
     x1, x2 = xj(alpha1, Y1, dl1, K1), xj(alpha2, Y2, dl2, K2)
     x0 = x(alpha0, K0, teta, x1, x2)
-    Ar = g(x0) - f(x1, K1) - f(x2, K2) + c1(K0)
+    Ar = g(x0) - f(x1, K1) - f(x2, K2) - 20  # c1(K0) = 20
 
     adifv = (1 - w) * ak(v1, v2) + w * Ar + Af0
     return adifv
 
 
 def Yj(hej, dlj):
-    valor = max(1e-12, (2 * hej) / (dlj ** 2))
+    valor = (2 * hej) / (dlj ** 2) #max(1e-12, (2 * hej) / (dlj ** 2))
     return valor
 
 
@@ -124,7 +123,7 @@ def alphaj(k, Yj):
 
 
 def kj(alphaj, Zg):
-    return complex(1, 0) / (alphaj * Zg * 1j)
+    return 1 / (alphaj * Zg * 1j)
 
 
 def xj(alphaj, Yj, dlj, Kj):
@@ -138,7 +137,7 @@ def x(alphaj, Kj, teta, x1, x2):
 
 
 def g(x):
-    return 0.05751 * x - np.log10(x)
+    return 0.05751 * x - 10 * np.log10(x)
 
 
 def f(xj, Kj):
@@ -150,13 +149,9 @@ def f(xj, Kj):
     if (xj > 0) and (xj <= 200):
         return F2
     elif (xj > 200) and (xj < 2000):
-        return g(xj) + 0.134 * xj * np.exp(-xj / 200) * (F1 - g(xj))
-    else:
+        return g(xj) + 0.0134 * xj * np.exp(-xj / 200) * (F1 - g(xj))
+    elif xj >= 2000:
         return g(xj)
-
-
-def c1(K):
-    return 20  # db
 
 
 def b(K):
@@ -473,6 +468,3 @@ def ikegami_model(h, hr, f, w=25, lr=2, th=np.pi / 2):  # f em MHz
     l = - 5.8 - 10 * np.log10(1 + (3 / (lr ** 2))) - 10 * np.log10(w) + 20 * np.log10(h - hr) + 10 * np.log10(
         np.sin(th)) + 10 * np.log10(f)
     return l
-a=[1.,2,3,4]
-
-print(a[:2])
