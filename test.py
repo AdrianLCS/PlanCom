@@ -260,6 +260,88 @@ def R(lat):
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
+def obter_dados_do_raster2(indice_atual, r, dem, dsm, landcover, d, distancia, area):
+    caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
+    global Configuracao
+    if (Configuracao["urb"] or Configuracao["veg"]) or not area:
+        with rasterio.open(caminho) as src:
+            raster = src.read(1)
+            inv_transform = ~src.transform
+            indice_atual_dem = indice_atual
+            for i in range(indice_atual_dem, np.shape(r)[0]):
+                if (np.floor(r[i][0]) == np.floor(r[indice_atual_dem][0])) and (
+                        np.floor(r[i][1]) == np.floor(r[indice_atual_dem][1])):
+                    pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
+                    dist = distancia * i
+                    alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+
+                    d.append(dist)
+                    dem.append(alt_dem)
+                    indice_atual_dem = i
+                else:
+                    indice_atual_dem = i
+                    break
+        with rasterio.open(caminho_dsm) as src_dsm:
+            raster_dsm = src_dsm.read(1)
+            inv_transform_dsm = ~src_dsm.transform
+
+            indice_atual_dsm = indice_atual
+            for i in range(indice_atual_dsm, np.shape(r)[0]):
+                if (np.floor(r[i][0]) == np.floor(r[indice_atual_dsm][0])) and (
+                        np.floor(r[i][1]) == np.floor(r[indice_atual_dsm][1])):
+                    pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
+
+                    alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                    dsm.append(alt_dsm)
+                    indice_atual_dsm = i
+                else:
+                    break
+
+        with rasterio.open(caminho_landcover) as src_landcover:
+            raster_landcover = src_landcover.read(1)
+            inv_transform_landcover = ~src_landcover.transform
+            indice_atual_land = indice_atual
+            for i in range(indice_atual_land, np.shape(r)[0]):
+                if (np.floor(r[i][0]) == np.floor(r[indice_atual_land][0])) and (
+                        np.floor(r[i][1]) == np.floor(r[indice_atual_land][1])):
+                    pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
+                    landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                    if i < np.shape(r)[0] - 1:
+                        lonpasso = (r[i + 1][0] - r[i][0]) / 3
+                        latpasso = (r[i + 1][1] - r[i][1]) / 3
+                        pixel_x2_lancover, pixel_y2_landcover = inv_transform_landcover * (
+                            r[i][0] + lonpasso, r[i][1] + latpasso)
+                        pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
+                            r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
+                        landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                        landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
+                    indice_atual_land = i
+                else:
+                    break
+        indice_atual = indice_atual_dem
+        return dem, dsm, landcover, d, indice_atual
+    else:
+
+        with rasterio.open(caminho) as src:
+            raster = src.read(1)
+            inv_transform = ~src.transform
+            for i in range(np.shape(r)[0]):
+                if (np.floor(r[i][0]) == np.floor(r[indice_atual][0])) and (
+                        np.floor(r[i][1]) == np.floor(r[indice_atual][1])):
+                    pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
+                    dist = distancia * i
+
+                    alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+
+                    d.append(dist)
+                    dem.append(alt_dem)
+                    indice_atual = i
+                else:
+                    indice_atual = i
+                    break
+        return dem, dsm, landcover, d, indice_atual
+
+
 def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
     with rasterio.open(caminho) as src, rasterio.open(caminho_dsm) as src_dsm, rasterio.open(
@@ -293,7 +375,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
 
                     alt_dsm = ((1 - (pixel_y1_dsm - np.floor(pixel_y1_dsm))) * raster_dsm[int(np.floor(pixel_y1_dsm))][
                         int(np.floor(pixel_x1_dsm))] + (
-                                       pixel_y1 - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
+                                       pixel_y1_dsm - np.floor(pixel_y1_dsm)) * raster_dsm[int(np.ceil(pixel_y1_dsm))][
                                    int(np.floor(pixel_x1_dsm))] + (
                                        1 - (pixel_x1_dsm - np.floor(pixel_x1_dsm))) *
                                raster_dsm[int(np.floor(pixel_y1_dsm))][
@@ -340,7 +422,7 @@ def perfil(p1, p2, area=0):
                 np.shape(r)[0] - 1)
 
     while indice_atual < np.shape(r)[0] - 1:
-        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
+        dem, dsm, landcover, d, indice_atual = obter_dados_do_raster2(indice_atual, r, dem, dsm, landcover, d, distancia,
                                                                      area)
 
     return dem, dsm, landcover, d, r
@@ -764,8 +846,8 @@ p2 = (markers[0]['lon'], markers[0]['lat'])
 caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p2)
 
 f = float(800)
-ime = 5
-PDC = 22.5
+ime = 30
+PDC = 100.5
 hg1 = PDC
 hg2 = ime
 with rasterio.open(caminho) as raster, rasterio.open(caminho_dsm) as raster_dsm, rasterio.open(
