@@ -345,9 +345,13 @@ def obter_dados_do_raster2(indice_atual, r, dem, dsm, landcover, d, distancia, a
 
 
 def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
-    caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
-    print(r[indice_atual])
+    if indice_atual > 0 and (indice_atual<len(r)-2):
+        caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual+2], r[indice_atual+2])
+    else:
+        caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
     print(caminho)
+    print(caminho_landcover)
+    print(r[indice_atual])
     global Configuracao
     if (Configuracao["urb"] or Configuracao["veg"]) or not area:
         with rasterio.open(caminho) as src:
@@ -395,10 +399,14 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     if i < np.shape(r)[0] - 1:
                         lonpasso = (r[i + 1][0] - r[i][0]) / 3
                         latpasso = (r[i + 1][1] - r[i][1]) / 3
+
                         pixel_x2_lancover, pixel_y2_landcover = inv_transform_landcover * (
                             r[i][0] + lonpasso, r[i][1] + latpasso)
+
                         pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
                             r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
+
+
                         if (np.floor(r[i][0] + 2*lonpasso) == np.floor(r[indice_atual_land][0])) and (
                                 np.floor(r[i][1] + 2*latpasso) == np.floor(r[indice_atual_land][1])):
                             landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
@@ -410,6 +418,8 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                         else:
                             landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
                             landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+
+
                     indice_atual_land = i
                 else:
                     break
@@ -607,7 +617,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     if len(lat1) == 2:
         raster1 = ns1 + lat1
         if ns1 == 'S':
-            raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
+            if (int(lat1) % 3) == 0:
+                raster_landcover = ns1 + str(int(lat1))
+            else:
+                raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
         else:
             lat1_land = str(int(lat1) - (int(lat1) % 3))
             if len(lat1_land) == 2:
@@ -616,12 +629,15 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
                 raster_landcover = ns1 + '0' + lat1_land
     else:
         raster1 = ns1 + '0' + lat1
+        if (int(lat1) % 3) == 0:
+            lat1_land = str(int(lat1))
+        else:
+            lat1_land = str(int(lat1) + (3 - (int(lat1) % 3)))
         if ns1 == 'S':
-            lat1_land=str(int(lat1) + (3 - (int(lat1) % 3)))
             if len(lat1_land) == 2:
-                raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
+                raster_landcover = ns1 + lat1_land
             else:
-                raster_landcover = ns1 + '0' + str(int(lat1) + (3 - (int(lat1) % 3)))
+                raster_landcover = ns1 + '0' + lat1_land
         else:
             raster_landcover = ns1 + '0' + str(int(lat1) - (int(lat1) % 3))
 
@@ -629,7 +645,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     if len(lon1) == 3:
         raster1 = raster1 + we1 + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3)==0:
+                raster_landcover = raster_landcover + we1 + str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 + str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
             if len(lon1_land)==3:
@@ -639,7 +658,11 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     elif len(lon1) == 2:
         raster1 = raster1 + we1 + '0' + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + '0' + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3) == 0:
+                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1) + (3 - (int(lon1) % 3)))
+
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
             if len(lon1_land) == 2:
@@ -650,7 +673,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     else:
         raster1 = raster1 + we1 + '00' + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3) == 0:
+                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + - (int(lon1) % 3))
 
@@ -704,8 +730,8 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
         x.append(xaux)
         z.append(zaux)
         u = u + 5
-    z = np.array(zorig)
-    x = np.array(xorig)
+    z = np.array(z)#np.array(zorig)
+    x = np.array(x)#np.array(xorig)
 
     # ajuste
     n = len(x)
@@ -782,36 +808,6 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
 
-def obter_vegeta_atravessada1(f, indice, dem, landcover, dsm, hr, ht, distancia):
-    dem = np.array(dem)
-    dsm = np.array(dsm)
-
-    altur_da_cobertuta = dsm[indice:] - dem[indice:]
-    espesura = 0
-    if indice == 0:
-        m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
-        c = (dem[0] + ht - dem[-1] - hr)
-        x = np.array(distancia)
-        y = m * x + c
-        los = y - (dem - (dem[-1] + hr))
-
-    else:
-        rfresn = 0.6 * Modelos.raio_fresnel(1, distancia[indice], distancia[-1] - distancia[indice], f)
-        m = -(rfresn + dem[indice] - dem[-1] - hr) / ((len(dem) - (indice + 1)) * distancia[1])
-        c = (rfresn + dem[indice] - dem[-1] - hr)
-        x = np.array(distancia[indice:])
-        x = x - distancia[indice]
-        y = m * x + c
-        los = y - (dem[indice:] - (dem[-1] + hr))
-    for i in range(len(los) - 1):
-        if los[i] < altur_da_cobertuta[i]:
-            for n in (0, 1, 2):
-                if landcover[3 * indice + i + n] == 10:
-                    espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-
-    return espesura
-
-
 def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, indice_d):
     dem = np.array(dem)
     dsm = np.array(dsm)
@@ -871,27 +867,27 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-    return espesura
+    return  espesura
 
 cobertura = []
-markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
+markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.7},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 4},
+           {'lat': 40.0503, 'lon': -105.2600, 'nome': 'MT05P13', 'h': 4}]
 
 #p1 = (markers[1]['lon'], markers[1]['lat'])
-p2 = (markers[0]['lon'], markers[0]['lat'])
-p1 = (markers[2]['lon'], markers[2]['lat'])
-print(obter_raster(p1,p1))
-f = float(800)
-ime = 1.5
-PDC = 10
+#p2 = (markers[0]['lon'], markers[0]['lat'])
+#p1 = (markers[2]['lon'], markers[2]['lat'])
+f = float(49.72)
+ime = 1.7
+PDC = 4
 hg1 = PDC
 hg2 = ime
 
 
 prs=[]
-with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
-    spamreader = np.genfromtxt(csvfile, delimiter=',')
+pxs=[]
+with open('C:\PythonFlask\PlanCom\medicoes\phase_1\plpath.txt') as csvfile:
+    spamreader = np.genfromtxt(csvfile)
     cont=0
 
     for row in spamreader:
@@ -899,39 +895,34 @@ with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\
             ppp = []
             for i in row:
                 ppp.append(i)
-            prs.append(tuple((ppp[2], ppp[1])))
+            prs.append(tuple((ppp[4], ppp[3])))
+            pxs.append(tuple((ppp[2], ppp[1])))
         cont += 1
-print(prs)
-medido=[]
-with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
-    spamreader = np.genfromtxt(csvfile, delimiter=',')
+A503V=[]
+
+with open('C:\PythonFlask\PlanCom\medicoes\phase_1\pldata.txt') as csvfile:
+    spamreader = np.genfromtxt(csvfile)
     cont=0
 
     for row in spamreader:
         if cont!=0:
-            m = []
+            ppm = []
             for i in row:
-                m.append(i)
-            medido.append(m[12])
+                ppm.append(i)
+            A503V.append(ppm[3])
         cont += 1
-print(medido)
-medido=np.array(medido)
+print(A503V)
+
 
 
 perdas=[]
-perdaITMUV=[]
-perdasepsteinUV=[]
-perdasepstein=[]
-perdasITM=[]
-PertasTMVU=[]
-PerdasITMV=[]
-PerdasepsteinU=[]
-PerdasepsteinV=[]
+perdas2=[]
 perdas3=[]
+comparacao=[]
 
-for i in range(len(prs)):
+for i in range(len(pxs)):
 
-    dem, dsm, landcover, distancia = perfil(p1, prs[i])
+    dem, dsm, landcover, distancia = perfil(pxs[i], prs[i])
     Densidade_urbana = 1
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
@@ -941,21 +932,20 @@ for i in range(len(prs)):
     else:
         urban = 'n'
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-    qs = 7  # 70% das situacões
+    qs = 5  # 70% das situacões
     espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
     h0 = (dem[0] + dem[-1]) / 2
-
-    demsm = dsm
+    demsm=dsm
     if (indice_visada > 1) and indice_visada_r != indice_visada:
         for u in range(indice_visada-1):
             demsm[u]=dem[u]
         for u in range(indice_visada_r, len(demsm)):
             demsm[u]= dem[u]
-    else:
-        demsm = dem
 
+    else:
+        demsm=dem
     dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
@@ -963,113 +953,52 @@ for i in range(len(prs)):
     itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                       teta1, teta2, polarizacao='v', simplificado=0)
 
-    if urban == 'wi':  # and h_urb > hg2 + 0.5:
-        h_urb = 4
-        urb = Modelos.ikegami_model(h_urb, hg2, f)
+    if urban == 'wi' and h_urb > hg2 + 0.5:
+        urb = max(0, Modelos.ikegami_model(h_urb, hg2, f))
     else:
         urb = 0
     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+    rearth = Modelos.opcional_ar(f,h0,d, he1, he2)
+    terreno = max(rearth, epstein)
     total_itm = espaco_livre+ urb + vegetacao + itm + variabilidade_situacao
-    total_epstein_peterson = espaco_livre+ urb + vegetacao + epstein
-    perdas.append((espaco_livre,urb,vegetacao,itm+variabilidade_situacao,epstein, medido[i]))
+    total_epstein_peterson = espaco_livre + urb + vegetacao + epstein
+    comparacao.append((epstein,  itm, vegetacao, urb, A503V[i]))
+    perdas.append(itm+vegetacao+urb+variabilidade_situacao)
+    perdas2.append(epstein+vegetacao+urb)
 
-    if (Dh > 100) and (d <= 0.7 * dls_LR)or (d<0.1*dls_LR):
-        perdas3.append(espaco_livre + epstein + vegetacao + urb)
+    if (Dh>100) and (d<=0.7*dls_LR) or (d<0.1*dls_LR):
+        perdas3.append(epstein + vegetacao + urb)
     else:
-        perdas3.append(espaco_livre+itm + vegetacao + urb + variabilidade_situacao)
+        perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
 
-    perdaITMUV.append(total_itm)
-    perdasepsteinUV.append(total_epstein_peterson)
-    perdasepstein.append(espaco_livre+epstein)
-    perdasITM.append(espaco_livre+itm+variabilidade_situacao)
-    PertasTMVU.append(espaco_livre+itm+urb+variabilidade_situacao)
-    PerdasITMV.append(espaco_livre+itm+vegetacao+variabilidade_situacao)
-    PerdasepsteinU.append(espaco_livre+epstein+urb)
-    PerdasepsteinV.append(espaco_livre+epstein+vegetacao)
+perdas = np.array(perdas)
+diferenca=[]
+diferenca2=[]
+diferenca3=[]
 
-print(perdas)
-perdaITMUV=np.array(perdaITMUV)
-medITMUV=np.mean(medido-perdaITMUV)
-print(medITMUV)
-med2ITMUV=np.mean((medido-perdaITMUV)**2)
-print(med2ITMUV)
-perdasepsteinUV=np.array(perdasepsteinUV)
-medepUV=np.mean(medido-perdasepsteinUV)
-print(medepUV)
-med2epUV=np.mean((medido-perdasepsteinUV)**2)
-print(med2epUV)
-perdasepstein=np.array(perdasepstein)
-medep=np.mean(medido-perdasepstein)
-print(medep)
-med2ep=np.mean((medido-perdasepstein)**2)
-print(med2ep)
-perdasITM=np.array(perdasITM)
-medITM=np.mean(medido-perdasITM)
-print(medITM)
-med2ITM=np.mean((medido-perdasITM)**2)
-print(med2ITM)
-PertasTMVU=np.array(PertasTMVU)
-medITMU=np.mean(medido-PertasTMVU)
-print(medITMU)
-med2ITMU=np.mean((medido-PertasTMVU)**2)
-print(med2ITMU)
-PerdasITMV=np.array(PerdasITMV)
-medITMV=np.mean(medido-PerdasITMV)
-print(medITMV)
-med2ITMV=np.mean((medido-PerdasITMV)**2)
-print(med2ITMV)
-PerdasepsteinU=np.array(PerdasepsteinU)
-medepU=np.mean(medido-PerdasepsteinU)
-print(medepU)
-med2epU=np.mean((medido-PerdasepsteinU)**2)
-print(med2epU)
-PerdasepsteinV=np.array(PerdasepsteinV)
-medepV=np.mean(medido-PerdasepsteinV)
-print(medepV)
-med2epV=np.mean((medido-PerdasepsteinV)**2)
-print(med2epV)
-perdas3=np.array(perdas3)
-print(np.mean(medido-perdas3))
-print(np.mean((medido-perdas3)**2))
+for i in range(len(A503V)):
+    if A503V[i] < 100:
+        diferenca.append(A503V[i]-perdas[i])
+        diferenca2.append(A503V[i] - perdas2[i])
+        diferenca3.append(A503V[i] - perdas3[i])
 
-"""dem, dsm, landcover, distancia = perfil(p1, p2)
-Densidade_urbana = 0.7
-d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
-    dem, dsm,
-    distancia, hg1, hg2,
-    Densidade_urbana)
-if landcover[-1] == 50:
-    urban = 'wi'
-else:
-    urban = 'n'
-yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-qs = 7  # 70% das situacões
-espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
-# colocar a cidicao para chamar itm ou urbano + espaco livre
+diferenca=np.array(diferenca)
+diferenca2=np.array(diferenca2)
+diferenca3=np.array(diferenca3)
 
-h0 = (dem[0] + dem[-1]) / 2
+med=np.mean(diferenca)
+medquadrati=np.mean(diferenca**2)
+med2=np.mean(diferenca2)
+medquadrati2=np.mean(diferenca2**2)
+med3=np.mean(diferenca3)
+medquadrati3=np.mean(diferenca3**2)
 
-dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+print(med)
+print(medquadrati)
+print(med2)
+print(medquadrati2)
+print(med3)
+print(medquadrati3)
 
-epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
-espaco_livre = Modelos.friis_free_space_loss_db(f, d)
-itm, variabilidade_situacao, At = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
-                                                            teta1, teta2, polarizacao='v', simplificado=0)
+print(comparacao)
 
-if urban == 'wi' and h_urb > hg2 + 0.5:
-    urb = Modelos.ikegami_model(h_urb, hg2, f)
-else:
-    urb = 0
-vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-total_itm = espaco_livre + urb + vegetacao + itm + variabilidade_situacao
-total_epstein_peterson = espaco_livre + urb + vegetacao + epstein
-perdas.append((espaco_livre, urb, vegetacao, itm, variabilidade_situacao, epstein, total_itm, total_epstein_peterson))
-
-print(perdas)
-print(
-    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
-
-plt.plot(distancia, dem)
-plt.title('Modelo Digital de Elevação (DEM)')
-plt.show()
-"""

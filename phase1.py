@@ -150,7 +150,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                             urb = Modelos.ikegami_model(h_urb, hg2, f)
                         else:
                             urb = 0
-                        perda, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d,
+                        perda, variabilidade_situacao, At,dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d,
                                                                                       yt, qs, dl1,
                                                                                       dl2,
                                                                                       Dh, visada,
@@ -399,17 +399,8 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                             r[i][0] + lonpasso, r[i][1] + latpasso)
                         pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
                             r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
-                        if (np.floor(r[i][0] + 2*lonpasso) == np.floor(r[indice_atual_land][0])) and (
-                                np.floor(r[i][1] + 2*latpasso) == np.floor(r[indice_atual_land][1])):
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
-                        elif (np.floor(r[i][0] + lonpasso) == np.floor(r[indice_atual_land][0])) and (
-                                np.floor(r[i][1] + latpasso) == np.floor(r[indice_atual_land][1])):
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-                        else:
-                            landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                        landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                        landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
                     indice_atual_land = i
                 else:
                     break
@@ -607,7 +598,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     if len(lat1) == 2:
         raster1 = ns1 + lat1
         if ns1 == 'S':
-            raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
+            if (int(lat1) % 3) == 0:
+                raster_landcover = ns1 + str(int(lat1))
+            else:
+                raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
         else:
             lat1_land = str(int(lat1) - (int(lat1) % 3))
             if len(lat1_land) == 2:
@@ -616,12 +610,15 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
                 raster_landcover = ns1 + '0' + lat1_land
     else:
         raster1 = ns1 + '0' + lat1
+        if (int(lat1) % 3) == 0:
+            lat1_land = str(int(lat1))
+        else:
+            lat1_land = str(int(lat1) + (3 - (int(lat1) % 3)))
         if ns1 == 'S':
-            lat1_land=str(int(lat1) + (3 - (int(lat1) % 3)))
             if len(lat1_land) == 2:
-                raster_landcover = ns1 + str(int(lat1) + (3 - (int(lat1) % 3)))
+                raster_landcover = ns1 + lat1_land
             else:
-                raster_landcover = ns1 + '0' + str(int(lat1) + (3 - (int(lat1) % 3)))
+                raster_landcover = ns1 + '0' + lat1_land
         else:
             raster_landcover = ns1 + '0' + str(int(lat1) - (int(lat1) % 3))
 
@@ -629,7 +626,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     if len(lon1) == 3:
         raster1 = raster1 + we1 + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3)==0:
+                raster_landcover = raster_landcover + we1 + str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 + str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
             if len(lon1_land)==3:
@@ -639,7 +639,11 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     elif len(lon1) == 2:
         raster1 = raster1 + we1 + '0' + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + '0' + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3) == 0:
+                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1) + (3 - (int(lon1) % 3)))
+
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
             if len(lon1_land) == 2:
@@ -650,7 +654,10 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
     else:
         raster1 = raster1 + we1 + '00' + lon1
         if we1 == 'W':
-            raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + (3 - (int(lon1) % 3)))
+            if (int(lon1) % 3) == 0:
+                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1))
+            else:
+                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + - (int(lon1) % 3))
 
@@ -704,8 +711,8 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
         x.append(xaux)
         z.append(zaux)
         u = u + 5
-    z = np.array(zorig)
-    x = np.array(xorig)
+    z = np.array(z)#np.array(zorig)
+    x = np.array(x)#np.array(xorig)
 
     # ajuste
     n = len(x)
@@ -871,26 +878,26 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-    return espesura
+    return  espesura
 
 cobertura = []
-markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
+markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.7},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 4},
+           {'lat': 40.0503, 'lon': -105.2600, 'nome': 'MT05P13', 'h': 4}]
 
 #p1 = (markers[1]['lon'], markers[1]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
 p1 = (markers[2]['lon'], markers[2]['lat'])
 print(obter_raster(p1,p1))
-f = float(800)
-ime = 1.5
-PDC = 10
+f = float(49.72)
+ime = 1.7
+PDC = 4
 hg1 = PDC
 hg2 = ime
 
 
 prs=[]
-with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
+with open('C:\PythonFlask\PlanCom\medicoes\phase_1\mtpath.txt') as csvfile:
     spamreader = np.genfromtxt(csvfile, delimiter=',')
     cont=0
 
@@ -899,36 +906,29 @@ with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\
             ppp = []
             for i in row:
                 ppp.append(i)
-            prs.append(tuple((ppp[2], ppp[1])))
+            prs.append(tuple((ppp[4], ppp[3])))
         cont += 1
 print(prs)
-medido=[]
-with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
-    spamreader = np.genfromtxt(csvfile, delimiter=',')
+A503V=[]
+with open('C:\PythonFlask\PlanCom\medicoes\phase_1\mtdata.txt') as csvfile:
+    spamreader = np.genfromtxt(csvfile)
     cont=0
 
     for row in spamreader:
         if cont!=0:
-            m = []
+            ppm = []
             for i in row:
-                m.append(i)
-            medido.append(m[12])
+                ppm.append(i)
+            A503V.append(ppm[3])
         cont += 1
-print(medido)
-medido=np.array(medido)
-
+print(A503V)
+print(len(A503V))
+print(len(prs))
 
 perdas=[]
-perdaITMUV=[]
-perdasepsteinUV=[]
-perdasepstein=[]
-perdasITM=[]
-PertasTMVU=[]
-PerdasITMV=[]
-PerdasepsteinU=[]
-PerdasepsteinV=[]
+perdas2=[]
 perdas3=[]
-
+comparacao=[]
 for i in range(len(prs)):
 
     dem, dsm, landcover, distancia = perfil(p1, prs[i])
@@ -936,6 +936,7 @@ for i in range(len(prs)):
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
+
     if landcover[-1] == 50:
         urban = 'wi'
     else:
@@ -946,16 +947,15 @@ for i in range(len(prs)):
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
     h0 = (dem[0] + dem[-1]) / 2
-
     demsm = dsm
     if (indice_visada > 1) and indice_visada_r != indice_visada:
         for u in range(indice_visada-1):
             demsm[u]=dem[u]
         for u in range(indice_visada_r, len(demsm)):
             demsm[u]= dem[u]
-    else:
-        demsm = dem
 
+    else:
+        demsm=dem
     dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
@@ -963,74 +963,56 @@ for i in range(len(prs)):
     itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                       teta1, teta2, polarizacao='v', simplificado=0)
 
-    if urban == 'wi':  # and h_urb > hg2 + 0.5:
-        h_urb = 4
-        urb = Modelos.ikegami_model(h_urb, hg2, f)
+    if urban == 'wi' and h_urb > hg2 + 0.5:
+        urb = max(0, Modelos.ikegami_model(h_urb, hg2, f))
     else:
         urb = 0
     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-    total_itm = espaco_livre+ urb + vegetacao + itm + variabilidade_situacao
+    rearth = Modelos.opcional_ar(f,h0,d, hg1, hg2)
+    terreno = max(rearth, epstein)
+    total_itm = espaco_livre+ urb + vegetacao + itm
     total_epstein_peterson = espaco_livre+ urb + vegetacao + epstein
-    perdas.append((espaco_livre,urb,vegetacao,itm+variabilidade_situacao,epstein, medido[i]))
+    comparacao.append((epstein, itm, vegetacao,  urb, rearth, A503V[i], Dh))
+    perdas.append(itm+vegetacao+urb+variabilidade_situacao)
+    perdas2.append(epstein+vegetacao+urb)
 
-    if (Dh > 100) and (d <= 0.7 * dls_LR)or (d<0.1*dls_LR):
-        perdas3.append(espaco_livre + epstein + vegetacao + urb)
+    if ((Dh>100) and (d<=0.7*dls_LR)) or (d<0.1*dls_LR):
+        perdas3.append(epstein + vegetacao + urb)
     else:
-        perdas3.append(espaco_livre+itm + vegetacao + urb + variabilidade_situacao)
+        perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
 
-    perdaITMUV.append(total_itm)
-    perdasepsteinUV.append(total_epstein_peterson)
-    perdasepstein.append(espaco_livre+epstein)
-    perdasITM.append(espaco_livre+itm+variabilidade_situacao)
-    PertasTMVU.append(espaco_livre+itm+urb+variabilidade_situacao)
-    PerdasITMV.append(espaco_livre+itm+vegetacao+variabilidade_situacao)
-    PerdasepsteinU.append(espaco_livre+epstein+urb)
-    PerdasepsteinV.append(espaco_livre+epstein+vegetacao)
 
+perdas = np.array(perdas)
 print(perdas)
-perdaITMUV=np.array(perdaITMUV)
-medITMUV=np.mean(medido-perdaITMUV)
-print(medITMUV)
-med2ITMUV=np.mean((medido-perdaITMUV)**2)
-print(med2ITMUV)
-perdasepsteinUV=np.array(perdasepsteinUV)
-medepUV=np.mean(medido-perdasepsteinUV)
-print(medepUV)
-med2epUV=np.mean((medido-perdasepsteinUV)**2)
-print(med2epUV)
-perdasepstein=np.array(perdasepstein)
-medep=np.mean(medido-perdasepstein)
-print(medep)
-med2ep=np.mean((medido-perdasepstein)**2)
-print(med2ep)
-perdasITM=np.array(perdasITM)
-medITM=np.mean(medido-perdasITM)
-print(medITM)
-med2ITM=np.mean((medido-perdasITM)**2)
-print(med2ITM)
-PertasTMVU=np.array(PertasTMVU)
-medITMU=np.mean(medido-PertasTMVU)
-print(medITMU)
-med2ITMU=np.mean((medido-PertasTMVU)**2)
-print(med2ITMU)
-PerdasITMV=np.array(PerdasITMV)
-medITMV=np.mean(medido-PerdasITMV)
-print(medITMV)
-med2ITMV=np.mean((medido-PerdasITMV)**2)
-print(med2ITMV)
-PerdasepsteinU=np.array(PerdasepsteinU)
-medepU=np.mean(medido-PerdasepsteinU)
-print(medepU)
-med2epU=np.mean((medido-PerdasepsteinU)**2)
-print(med2epU)
-PerdasepsteinV=np.array(PerdasepsteinV)
-medepV=np.mean(medido-PerdasepsteinV)
-print(medepV)
-med2epV=np.mean((medido-PerdasepsteinV)**2)
-print(med2epV)
-perdas3=np.array(perdas3)
-print(np.mean(medido-perdas3))
-print(np.mean((medido-perdas3)**2))
+diferenca=[]
+diferenca2=[]
+diferenca3=[]
+
+for i in range(len(A503V)):
+    if A503V[i] < 100:
+        diferenca.append(A503V[i]-perdas[i])
+        diferenca2.append(A503V[i] - perdas2[i])
+        diferenca3.append(A503V[i] - perdas3[i])
+
+diferenca=np.array(diferenca)
+diferenca2=np.array(diferenca2)
+diferenca3=np.array(diferenca3)
+med=np.mean(diferenca)
+medquadrati=np.mean(diferenca**2)
+med2=np.mean(diferenca2)
+medquadrati2=np.mean(diferenca2**2)
+med3=np.mean(diferenca3)
+medquadrati3=np.mean(diferenca3**2)
+
+print(med)
+print(medquadrati)
+print(med2)
+print(medquadrati2)
+print(med3)
+print(medquadrati3)
+
+print(comparacao)
+
 
 """dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
