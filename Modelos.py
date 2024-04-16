@@ -317,7 +317,7 @@ def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg,
     return Aref, Aed, md
 
 
-def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0):
+def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0, visada):
     d2 = dls
     Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
     A2 = Aed + md * d2
@@ -385,6 +385,10 @@ def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                 AK2 = 0
     Ael = A2 - AK1 * d2
 
+    if visada:
+        At = alos(k, dls, Dh, d, md, Aed, he1, he2, Zg)[1]
+    else:
+        At = alos(k, dls, Dh, dl2, md, Aed, he1, he2, Zg)[1]
     Aref = max(0, Ael + AK1 * d + AK2 * np.log(d / dls))
     return Aref, At
 
@@ -492,7 +496,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
 
     else:
         if d <= dls:
-            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
+            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0,visada)
         elif (d > dls) and (d <= dx):
             Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)[0]
         else:

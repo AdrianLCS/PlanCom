@@ -2,9 +2,17 @@
 {%block conteudo%}
 
 <body>
+
+
+
     <div id="config" style="height: 15%;">
         <h2 style="text-align: center;">Seleção de mapa</h2>
     <ol>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*">
+            <input type="submit" value="Enviar">
+        </form>
+
         <form action="{{url_for('addmapa')}}" method="post">
             <label for="mapa">caminho do mapa a ser carregar</label>
             <input type="text" id="mapa" name="mapa" required>

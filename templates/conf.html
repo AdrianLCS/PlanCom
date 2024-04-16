@@ -6,9 +6,6 @@
         <h2 style="text-align: center;">Parametros de Configuracao</h2>
     <ol>
         <form action="{{url_for('conf')}}" method="post">
-            <label for="modelo">Modelo de perda devido ao terreno</label>
-            <input type="text" id="modelo" name="modelo" required>
-
             <label for="urb">calculo da perda urbana</label>
             <input type="text" id="urb" name="urb" required>
 
@@ -17,13 +14,6 @@
 
             <label for="precisao">Precisao de predição de areia</label>
             <input type="text" id="precisao" name="precisao" required>
-
-            <label for="max_alt">Altitude maxima do terreno na área de interesse</label>
-            <input type="text" id="max_alt" name="max_alt" required>
-
-            <label for="min_alt">Altitude mínica do terreno na área de interesse</label>
-            <input type="text" id="min_alt" name="min_alt" required>
-
 
             <button>Setar configuração</button>
         </form>

@@ -6,17 +6,28 @@ import folium
 import ee
 import matplotlib.pyplot as plt
 import Modelos
+from PIL import Image
 
 # no marcador definir o radio. radio sera um objeto que contém potencia ganho da antena limear de recepcao
 
 app = Flask(__name__)
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'tif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 
-Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 300,
-                "min_alt": 0}  # ITM ou Epstein-peterson
-mapas = []
+Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
+mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
+          'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
+
+
+# mapas=[]
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
@@ -153,21 +164,23 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
                         else:
                             vegetacao = 0
-                        if Configuracao["modelo"] == "ITM":
-                            perda, variabilidade_situacao, At,dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2,
-                                                                                          d,
-                                                                                          yt, qs, dl1,
-                                                                                          dl2,
-                                                                                          Dh, visada,
-                                                                                          teta1, teta2, polarizacao='v')
-                            terreno = variabilidade_situacao + perda
 
-                        elif Configuracao["modelo"] == "EPT":
-                            dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
-                            terreno = Modelos.modelo_epstein_peterson(dls, hs, f)
-
+                        dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
                         espaco_livre = Modelos.friis_free_space_loss_db(f, d)
-                        p = espaco_livre + terreno + urb + vegetacao
+                        epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
+                        itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1,
+                                                                                            he2,
+                                                                                            d,
+                                                                                            yt, qs, dl1,
+                                                                                            dl2,
+                                                                                            Dh, visada,
+                                                                                            teta1, teta2,
+                                                                                            polarizacao='v')
+
+                        if (Dh > 100) and (d <= 0.7 * dls_LR) or (d < 0.1 * dls_LR):
+                            p = (espaco_livre + epstein + vegetacao + urb)
+                        else:
+                            p = (espaco_livre + itm + vegetacao + urb + variabilidade_situacao)
 
                         if p <= limear:
                             data[linha][coluna] = 2
@@ -214,6 +227,28 @@ def criaimg(dem_file):
     return dem_file[:-3] + "png"
 
 
+def carregamapa(caminho_completo, filename):
+    # Carregar o arquivo DEM (tif)
+    dem_dataset = rasterio.open(caminho_completo)
+    # Obter as informações sobre a extensão do DEM
+    bounds = dem_dataset.bounds
+    min_lat, min_lon = bounds.bottom, bounds.left
+    max_lat, max_lon = bounds.top, bounds.right
+    nome = filename
+
+    # Adicionar a camada do raster como uma sobreposição de imagem
+    image_overlay = folium.raster_layers.ImageOverlay(
+        image=caminho_completo[:-4] + '.jpg',
+        bounds=[[min_lat, min_lon], [max_lat, max_lon]],
+        opacity=1,
+        name=nome,
+        interactive=True,
+        cross_origin=False,
+        zindex=1
+    )
+    return image_overlay
+
+
 def criamapa(dem_file, img_file):
     # Carregar o arquivo DEM (tif)
     dem_dataset = rasterio.open(dem_file)
@@ -224,11 +259,6 @@ def criamapa(dem_file, img_file):
     max_lat, max_lon = bounds.top, bounds.right
 
     # Calcular o centro do DEM para definir o local inicial do mapa
-    center_lat = (min_lat + max_lat) / 2
-    center_lon = (min_lon + max_lon) / 2
-
-    # Criar um mapa OpenStreetMap usando Folium
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, tiles='OpenStreetMap')
     nome = '0'
     for i in cobertura:
         if i['img'] == img_file:
@@ -265,8 +295,6 @@ def reta(p1, p2, tranform):
 def R(lat):
     return (((((a ** 2) * np.cos(lat * np.pi / 180)) ** 2) + (((b ** 2) * np.sin(lat * np.pi / 180)) ** 2)) / (
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
-
-
 
 
 def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
@@ -324,8 +352,8 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                             r[i][0] + lonpasso, r[i][1] + latpasso)
                         pixel_x3_lancover, pixel_y3_landcover = inv_transform_landcover * (
                             r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
-                        if (np.floor(r[i][0] + 2*lonpasso) == np.floor(r[indice_atual_land][0])) and (
-                                np.floor(r[i][1] + 2*latpasso) == np.floor(r[indice_atual_land][1])):
+                        if (np.floor(r[i][0] + 2 * lonpasso) == np.floor(r[indice_atual_land][0])) and (
+                                np.floor(r[i][1] + 2 * latpasso) == np.floor(r[indice_atual_land][1])):
                             landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
                             landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
                         elif (np.floor(r[i][0] + lonpasso) == np.floor(r[indice_atual_land][0])) and (
@@ -360,7 +388,6 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     indice_atual = i
                     break
         return dem, dsm, landcover, d, indice_atual
-
 
 
 def perfil(p1, p2, area=0):
@@ -557,17 +584,16 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         else:
             raster_landcover = ns1 + '0' + str(int(lat1) - (int(lat1) % 3))
 
-
     if len(lon1) == 3:
         raster1 = raster1 + we1 + lon1
         if we1 == 'W':
-            if (int(lon1) % 3)==0:
+            if (int(lon1) % 3) == 0:
                 raster_landcover = raster_landcover + we1 + str(int(lon1))
             else:
                 raster_landcover = raster_landcover + we1 + str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
-            if len(lon1_land)==3:
+            if len(lon1_land) == 3:
                 raster_landcover = raster_landcover + we1 + lon1_land
             else:
                 raster_landcover = raster_landcover + we1 + '0' + lon1_land
@@ -575,9 +601,9 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster1 = raster1 + we1 + '0' + lon1
         if we1 == 'W':
             if (int(lon1) % 3) == 0:
-                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1))
+                raster_landcover = raster_landcover + we1 + '0' + str(int(lon1))
             else:
-                raster_landcover = raster_landcover + we1 +'0'+ str(int(lon1) + (3 - (int(lon1) % 3)))
+                raster_landcover = raster_landcover + we1 + '0' + str(int(lon1) + (3 - (int(lon1) % 3)))
 
         else:
             lon1_land = str(int(lon1) - (int(lon1) % 3))
@@ -590,12 +616,11 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
         raster1 = raster1 + we1 + '00' + lon1
         if we1 == 'W':
             if (int(lon1) % 3) == 0:
-                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1))
+                raster_landcover = raster_landcover + we1 + '00' + str(int(lon1))
             else:
-                raster_landcover = raster_landcover + we1 +'00'+ str(int(lon1) + (3 - (int(lon1) % 3)))
+                raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + (3 - (int(lon1) % 3)))
         else:
             raster_landcover = raster_landcover + we1 + '00' + str(int(lon1) + - (int(lon1) % 3))
-
 
     if len(lat2) == 2:
         raster2 = ns2 + lat2
@@ -628,6 +653,7 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
 
         return raster, rasterdsm, str(
             os.path.join('LandCover', raster_landcover + '.tif'))
+
 
 def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
     xa = int(min(15 * hg1, 0.1 * dl1) / distancia[1])
@@ -720,7 +746,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     global Configuracao
     if Configuracao["urb"]:
-        h_urb = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+        h_urb = max(0, 1.5 + (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
     else:
         h_urb = 0
 
@@ -815,7 +841,7 @@ cobertura = []
 
 def addfoliun():
     global Configuracao
-    escala_de_altura = [Configuracao["min_alt"], Configuracao["max_alt"]]
+    escala_de_altura = [0, 100]
 
     # ['00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000']
     image_viz_params = {'bands': ['elevation'], 'min': escala_de_altura[0], 'max': escala_de_altura[1],
@@ -865,6 +891,9 @@ def addfoliun():
         print('Erro na biblioteca Earth Engine')
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
+
+    for i in mapas:
+        carregamapa(i[0], i[1]).add_to(folium_map)
 
     """
     bdgex = 'http://bdgex.eb.mil.br/cgi-bin/mapaindice'
@@ -958,7 +987,7 @@ def ptp():
 
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia, r_global = perfil(p1, p2)
-            Densidade_urbana = 0.7
+            Densidade_urbana = 1
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
             if landcover[-1] == 50:
@@ -970,17 +999,18 @@ def ptp():
 
             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
                                                 indice_visada)
-            # colocar a cidicao para chamar itm ou urbano + espaco livre
 
             print(
                 f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h_urb},{teta1}, {teta2}, {urban})')
             hmed = (dem[0] + dem[-1]) / 2
-            perda, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs, dl1,
-                                                                          dl2,
-                                                                          Dh, visada,
-                                                                          teta1, teta2, polarizacao='v')
-
+            dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
             espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+            epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
+            itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(hmed, f, hg1, hg2, he1, he2, d, yt, qs,
+                                                                                dl1,
+                                                                                dl2,
+                                                                                Dh, visada,
+                                                                                teta1, teta2, polarizacao='v')
 
             if urban == 'wi' and h_urb > hg2 + 0.5:
                 urb = Modelos.ikegami_model(h_urb, hg2, f)
@@ -990,11 +1020,19 @@ def ptp():
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-            print(
-                f' Perda por popgação no espaço livre: {espaco_livre}\n Perda relativa ao terreno: {perda}\n perda por variabilidade da situação: {variabilidade_situacao} \n perda em vegetação: {vegetacao} \b Perda urbana: {urb}')
+            if (Dh > 100) and (d <= 0.7 * dls_LR) or (d < 0.1 * dls_LR):
+                Perda_por_terreno = (epstein)
+            else:
+                Perda_por_terreno = (itm + variabilidade_situacao)
+            perda = Perda_por_terreno + vegetacao + urb + espaco_livre
+
             perdas.append({'ponto1': request.form.get("ponto1"),
                            'ponto2': request.form.get("ponto2"),
                            'f': f,
+                           'EspacoLivre': espaco_livre,
+                           'urb': urb,
+                           'veg ': vegetacao,
+                           'terreno':Perda_por_terreno,
                            'perda': perda})
 
     return render_template('ptp.html', perdas=perdas)
@@ -1030,23 +1068,66 @@ def conf():
     global Configuracao
     p1 = ()
     ht = 2
-    if request.form.get("modelo") and request.form.get("urb") and request.form.get("veg") and \
-            request.form.get("precisao") and request.form.get("min_alt") and request.form.get("max_alt"):
-        Configuracao = {"modelo": request.form.get("modelo"),
-                        "urb": request.form.get("urb"),
+    if request.form.get("urb") and request.form.get("veg") and request.form.get("precisao"):
+        Configuracao = {"urb": request.form.get("urb"),
                         "veg": request.form.get("veg"),
                         "precisao": request.form.get("precisao"),
-                        "max_alt": request.form.get("max_alt"),
-                        "min_alt": request.form.get("min_alt")}  # ITM ou Epstein-peterson
+                        }  # ITM ou Epstein-peterson
     return render_template('conf.html')
 
 
 @app.route('/addmapa', methods=['GET', 'POST'])
 def addmapa():
-    global mapas
     if request.form.get("mapa"):
-        mapas.append(request.form.get("mapa"))
+        if 'file' not in request.files:
+            print('Nenhum arquivo enviado')
+
+        file = request.files['file']
+
+        if file.filename == '':
+            print('Nenhum arquivo selecionado')
+        global mapas
+        if file and allowed_file(file.filename):
+            filename = file.filename
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            caminho_completo = os.path.join('uploads', filename)
+            mapas.append([caminho_completo, filename[:-4]])
+            with Image.open(caminho_completo) as img:
+                # Converte a imagem para JPEG
+                img = img.convert('RGB')  # Garante que está no formato adequado
+                # Salva a imagem no formato JPEG
+                img.save(caminho_completo[:-4] + '.jpg', 'JPEG')
+            print('Arquivo enviado com sucesso')
+
+        return 'Arquivo não suportado'
+
     return render_template('addmapa.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return 'Nenhum arquivo enviado'
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return 'Nenhum arquivo selecionado'
+    global mapas
+    if file and allowed_file(file.filename):
+        filename = file.filename
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        caminho_completo = os.path.join('uploads', filename)
+        mapas.append([caminho_completo, filename[:-4]])
+        with Image.open(caminho_completo) as img:
+            # Converte a imagem para JPEG
+            img = img.convert('RGB')  # Garante que está no formato adequado
+            # Salva a imagem no formato JPEG
+            img.save(caminho_completo[:-4] + '.jpg', 'JPEG')
+        print('Arquivo enviado com sucesso')  # return 'Arquivo enviado com sucesso'
+        return render_template('addmapa.html')
+    else:
+        return 'Arquivo não suportado'
 
 
 if __name__ == '__main__':

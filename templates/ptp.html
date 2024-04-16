@@ -5,21 +5,7 @@
     <div id="AddPoint" style="height: 15%;">
         <h2 style="text-align: center;">Predicão PTP</h2>
     <ol>
-        <table>
-            <tr>
-                <th>Ponto 1</th>
-                <th>Ponto 2</th>
-                <th>Frequência</th>
-                <th>Perda em db</th>
-            </tr>
-            {%for perda in perdas%}
-            <tr>
-            {%for chave, valor in perda.items()%}
-                <td>{{valor}}</td>
-            {% endfor %}
-            </tr>
-            {% endfor %}
-        </table>
+
         <form action="{{url_for('ptp')}}" method="post">
             <label for="ponto1">Ponto 1</label>
             <input type="text" id="ponto1" name="ponto1" required>
@@ -32,6 +18,25 @@
 
             <button>Calcular perda</button>
         </form>
+        <table>
+            <tr>
+                <th>Ponto 1  </th>
+                <th>Ponto 2  </th>
+                <th>Frequência  </th>
+                <th>Espaço livre  </th>
+                <th>Perda Urbana  </th>
+                <th>Vegetação  </th>
+                <th>Terreno  </th>
+                <th>Total (db)  </th>
+            </tr>
+            {%for perda in perdas%}
+            <tr>
+            {%for chave, valor in perda.items()%}
+                <td>{{valor}}</td>
+            {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
     </ol>
     </div>
 

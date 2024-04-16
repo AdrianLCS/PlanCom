@@ -976,7 +976,7 @@ for i in range(len(prs)):
     perdas.append(itm+vegetacao+urb+variabilidade_situacao)
     perdas2.append(epstein+vegetacao+urb)
 
-    if ((Dh>100) and (d<=0.7*dls_LR)) or (d<0.1*dls_LR):
+    if ((Dh>90) and (d<=0.7*dls_LR)) or (d<0.1*dls_LR):
         perdas3.append(epstein + vegetacao + urb)
     else:
         perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
