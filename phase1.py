@@ -3,8 +3,7 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-import itmModel
-import ee
+
 import matplotlib.pyplot as plt
 import Modelos
 
@@ -81,7 +80,7 @@ def parametros_difracao(distancia, dem, ht, hr):
         aref = ( hr + dem[-1] - dem[idl1]) / (d - distancia[idl1])
         maxangulo = aref
         visada = 1
-        for i in range(idl1 + 3, len(dem) - 1):
+        for i in range(idl1 + 5, len(dem) - 1):
             angulo.append((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1]))
             if  (angulo[-1] > maxangulo):
                 idll.append(i)
@@ -880,6 +879,38 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     return  espesura
 
+def corelacao(lh,lm):
+    freq0 = 1 / len(lh)
+    mh = 0
+    varh = 0
+    VMQh = 0
+    for i in lh:
+        mh = mh + i * freq0
+    for i in lh:
+        varh = varh + ((i - mh) ** 2) * freq0
+    desvpadh = varh ** (1 / 2)
+    for i in lh:
+        VMQh = VMQh + i ** 2 * freq0
+
+    mm = 0
+    varm = 0
+    VMQm = 0
+    for i in lm:
+        mm = mm + i * freq0
+    for i in lm:
+        varm = varm + ((i - mm) ** 2) * freq0
+    desvpadm = varm ** (1 / 2)
+    for i in lh:
+        VMQm = VMQm + i ** 2 * freq0
+
+    covariancia = 0
+    for j in range(len(lh)):
+        covariancia += (lm[j] - mm) * (lh[j] - mh) * freq0
+    Rxy=covariancia/(desvpadm*desvpadh)
+
+    return Rxy
+
+
 cobertura = []
 markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.7},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 4},
@@ -977,9 +1008,14 @@ for i in range(len(prs)):
     perdas2.append(epstein+vegetacao+urb)
 
     if ((Dh>90) and (d<=0.7*dls_LR)) or (d<0.1*dls_LR):
-        perdas3.append(epstein + vegetacao + urb)
+        pd3=epstein + vegetacao + urb
+        perdas3.append(pd3)
     else:
-        perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
+        pd3=itm+vegetacao+urb+variabilidade_situacao
+        perdas3.append(pd3)
+
+    with open("mtsimp.txt", "a") as arquivo:
+        arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 
 perdas = np.array(perdas)
@@ -1004,13 +1040,16 @@ medquadrati2=np.mean(diferenca2**2)
 med3=np.mean(diferenca3)
 medquadrati3=np.mean(diferenca3**2)
 
+print(corelacao(perdas, perdas))
 print(med)
 print(medquadrati)
+print(corelacao(A503V, perdas))
 print(med2)
 print(medquadrati2)
+print(corelacao(A503V, perdas2))
 print(med3)
 print(medquadrati3)
-
+print(corelacao(A503V, perdas3))
 print(comparacao)
 
 

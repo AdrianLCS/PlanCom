@@ -869,6 +869,37 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     return  espesura
 
+
+def corelacao(lh,lm):
+    freq0 = 1 / len(lh)
+    mh = 0
+    varh = 0
+    VMQh = 0
+    for i in lh:
+        mh = mh + i * freq0
+    for i in lh:
+        varh = varh + ((i - mh) ** 2) * freq0
+    desvpadh = varh ** (1 / 2)
+    for i in lh:
+        VMQh = VMQh + i ** 2 * freq0
+
+    mm = 0
+    varm = 0
+    VMQm = 0
+    for i in lm:
+        mm = mm + i * freq0
+    for i in lm:
+        varm = varm + ((i - mm) ** 2) * freq0
+    desvpadm = varm ** (1 / 2)
+    for i in lh:
+        VMQm = VMQm + i ** 2 * freq0
+
+    covariancia = 0
+    for j in range(len(lh)):
+        covariancia += (lm[j] - mm) * (lh[j] - mh) * freq0
+    Rxy=covariancia/(desvpadm*desvpadh)
+
+    return Rxy
 cobertura = []
 markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.7},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 4},
@@ -920,6 +951,8 @@ perdas2=[]
 perdas3=[]
 comparacao=[]
 
+
+
 for i in range(len(pxs)):
 
     dem, dsm, landcover, distancia = perfil(pxs[i], prs[i])
@@ -932,7 +965,7 @@ for i in range(len(pxs)):
     else:
         urban = 'n'
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-    qs = 5  # 70% das situacões
+    qs = 7  # 70% das situacões
     espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
@@ -965,11 +998,16 @@ for i in range(len(pxs)):
     comparacao.append((epstein,  itm, vegetacao, urb, A503V[i]))
     perdas.append(itm+vegetacao+urb+variabilidade_situacao)
     perdas2.append(epstein+vegetacao+urb)
-
-    if (Dh>100) and (d<=0.7*dls_LR) or (d<0.1*dls_LR):
-        perdas3.append(epstein + vegetacao + urb)
+    print(0.1*dls_LR)
+    if (Dh>90) and (d<=0.7*dls_LR)or (d<0.1*dls_LR):
+        pd3=epstein + vegetacao + urb
+        perdas3.append(pd3)
     else:
-        perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
+        pd3=itm+vegetacao+urb+variabilidade_situacao
+        perdas3.append(pd3)
+
+    with open("plqs7.txt", "a") as arquivo:
+        arquivo.write("\n"+str(pxs[i][0])+","+str(pxs[i][1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 perdas = np.array(perdas)
 diferenca=[]
@@ -995,6 +1033,7 @@ medquadrati3=np.mean(diferenca3**2)
 
 print(med)
 print(medquadrati)
+print(np.corrcoef(A503V,perdas))
 print(med2)
 print(medquadrati2)
 print(med3)

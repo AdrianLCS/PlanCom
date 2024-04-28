@@ -81,7 +81,7 @@ def parametros_difracao(distancia, dem, ht, hr):
         aref = ( hr + dem[-1] - dem[idl1]) / (d - distancia[idl1])
         maxangulo = aref
         visada = 1
-        for i in range(idl1 + 3, len(dem) - 1):
+        for i in range(idl1 + 5, len(dem) - 1):
             angulo.append((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1]))
             if  (angulo[-1] > maxangulo):
                 idll.append(i)
@@ -922,7 +922,7 @@ for i in range(len(pxs)):
     else:
         urban = 'n'
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-    qs = 5  # 70% das situacões
+    qs = 7  # 70% das situacões
     espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
@@ -957,9 +957,14 @@ for i in range(len(pxs)):
     perdas2.append(epstein+vegetacao+urb)
 
     if (Dh>90) and (d<=0.7*dls_LR)or (d<0.1*dls_LR):
-        perdas3.append(epstein + vegetacao + urb)
+        pd3=epstein + vegetacao + urb
+        perdas3.append(pd3)
     else:
-        perdas3.append(itm+vegetacao+urb+variabilidade_situacao)
+        pd3=itm+vegetacao+urb+variabilidade_situacao
+        perdas3.append(pd3)
+
+    with open("ohqs7.txt", "a") as arquivo:
+        arquivo.write("\n"+str(pxs[i][0])+","+str(pxs[i][1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 perdas = np.array(perdas)
 diferenca = []

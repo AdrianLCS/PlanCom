@@ -3,7 +3,9 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-import ee
+#from folium.plugins import HeatMap
+#import branca.colormap
+#import ee
 import matplotlib.pyplot as plt
 import Modelos
 from PIL import Image
@@ -20,11 +22,10 @@ a = 6378137  # m
 b = 6356752  # m
 
 Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
-mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
-          'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
+# mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif', 'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
 
 
-# mapas=[]
+mapas=[]
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -102,7 +103,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
     yt = 1
-    qs = 7
+    qs = 5
 
     with rasterio.open(raster_path, 'r+') as src:
         # Ler a matriz de dados do raster
@@ -671,9 +672,10 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
         x.append(xaux)
         z.append(zaux)
         u = u + 5
-    z = np.array(zorig)
-    x = np.array(xorig)
-
+    #z = np.array(zorig)
+    #x = np.array(xorig)
+    z = np.array(z)
+    x = np.array(x)
     # ajuste
     n = len(x)
     sx = 0
@@ -875,6 +877,8 @@ def addfoliun():
                          name='OpenTopoMap').add_to(folium_map)
     except:
         print("erro ao tentar acessar a internet")
+
+    """
     try:
         ee.Authenticate()
         ee.Initialize(project="plancom-409417")
@@ -889,43 +893,86 @@ def addfoliun():
         ).add_to(folium_map)
     except:
         print('Erro na biblioteca Earth Engine')
+    """
+
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
 
     for i in mapas:
         carregamapa(i[0], i[1]).add_to(folium_map)
-
     """
-    bdgex = 'http://bdgex.eb.mil.br/cgi-bin/mapaindice'
-    bdgex_map = WebMapService(bdgex)
-    print('\n'.join(bdgex_map.contents.keys()))
-    layer = 'F100_WGS84_MATRICIAL'
-    wms = bdgex_map.contents[layer]
-    name = wms.title
-    lon = (wms.boundingBox[0] + wms.boundingBox[2]) / 2
-    lat = (wms.boundingBox[1] + wms.boundingBox[3]) / 2
-    center = lat, lon
-    style = 'boxfill/sst_36'
+    medido=[]
+    dadosmedido=[]
+    dadositm = []
+    dadosprop=[]
+    dadositms=[]
+    erro=[]
+    with open('C:\PythonFlask\PlanCom\\nig.txt') as csvfile:
+        spamreader = np.genfromtxt(csvfile, delimiter=',')
+        cont = 0
 
-    if style not in wms.styles:
-        style = None
+        for row in spamreader:
+            if cont != 0:
+                m = []
+                for i in row:
+                    m.append(i)
+                if m[12]<100:
+                    dadosmedido.append([m[3],m[2],m[12]])
+                    dadositm.append([m[3], m[2], m[10]])
+                    dadosprop.append([m[3], m[2], m[11]])
+                    dadositms.append([m[3], m[2], m[6]])
+                    medido.append(m[11] - m[12])  #medido.append([m[12], m[6],m[11],m[10]]) #
+                    erro.append([m[3], m[2], m[11] - m[12]])
 
-    folium.raster_layers.WmsTileLayer(
-        url=bdgex,
-        name=name,
-        style=style,
-        fmt='image/png',
-        transparent=False,
-        layers=layer,
-        overlay=True,
-    ).add_to(folium_map)
+            cont += 1
+    dicionario_cores={0:"blue",0.25:"cyan",.5:"lime",0.75:"yellow",1:"red"}
+    mini=np.min(medido)
+    maxi=np.max(medido)
+
+    dadosmedido.append([4.991688749, 8.320198953, mini])
+    dadosmedido.append([4.991688749, 8.320198953, maxi])
+    dadositm.append([4.991688749, 8.320198953, mini])
+    dadositm.append([4.991688749, 8.320198953, maxi])
+    dadosprop.append([4.991688749, 8.320198953, mini])
+    dadosprop.append([4.991688749, 8.320198953, maxi])
+    dadositms.append([4.991688749, 8.320198953, mini])
+    dadositms.append([4.991688749, 8.320198953, maxi])
+    #erro.append([4.991688749, 8.320198953, 0])
+    dadositm=np.array(dadositm)
+    dadositms = np.array(dadositms)
+    dadosmedido = np.array(dadosmedido)
+    dadosprop = np.array(dadosprop)
+    erro2=[]
+    erro1=[]
+    for i in range(len(erro)):
+        if erro[i][2]>=0:
+            erro1.append(erro[i])
+        else:
+            erro[i][2]=-erro[i][2]
+            erro2.append(erro[i])
+    erro1.append([4.991688749, 8.320198953, 0])
+    erro2.append([4.991688749, 8.320198953, 0])
+
+    erro1 = np.array(erro1)
+    erro2 = np.array(erro2)
+    indices=[0, .25,.5,.75,1]
+    colormap=branca.colormap.LinearColormap(['blue', 'cyan', 'lime', 'yellow', 'red'],index=indices)
+    colormap.scale(0,-mini).add_to(folium_map)
+    HeatMap(data=dadosmedido, max_zoom=18,radius=15, name='medido',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1).add_to(folium_map)
+    HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1).add_to(folium_map)
+    HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1).add_to(folium_map)
+    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)
     """
+
+
     folium_map.add_child(folium.LayerControl())
     return folium_map
 
 
 markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5}]
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},
+           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h':4}]
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -995,7 +1042,7 @@ def ptp():
             else:
                 urban = 'n'
             yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-            qs = 7  # 70% das situacões
+            qs = 5  # 70% das situacões
 
             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
                                                 indice_visada)

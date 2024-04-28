@@ -151,7 +151,8 @@ def f(xj, Kj):
     if (xj > 0) and (xj <= 200):
         return F2
     elif (xj > 200) and (xj < 2000):
-        return g(xj) + 0.0134 * xj * np.exp(-xj / 200) * (F1 - g(xj))
+        gj = g(xj)
+        return gj + 0.0134 * xj * np.exp(-xj / 200) * (F1 - gj)
     elif xj >= 2000:
         return g(xj)
 
@@ -307,8 +308,6 @@ def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg,
     d3 = max(dls, dl + 1.3787 * Xae)
     d4 = d3 + 2.7574 * Xae
 
-    # Efeito da curvatura da terra #
-    # Efeito ponta de faca #
     A3 = adif(d3, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg, f, h0)
     A4 = adif(d4, k, Dh, he1, he2, hg1, hg2, dl, tetae, Ye, dls, dl1, dl2, Zg, f, h0)
     md = (A4 - A3) / (d4 - d3)
