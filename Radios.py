@@ -3,11 +3,10 @@ class Radio():
         self.sensibilidad=sensibilidad
         self.faxa_de_freq = freq
         self.potencia = []
-        self.antenas {'blade': 1.5, ''}
+        self.antenas =antena #{'blade': 1.5, ''}
         self.ganho = ganho
 
-rf7800vhh = radio(sensibilidade=-116)
-s=rf7800vhh.sensibilidade
+#rf7800vhh = radio(sensibilidade=-116)
 
 RF7800  = Radio()
 RF7800S = Radio()
