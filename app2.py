@@ -145,6 +145,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
+                    h_urb = h_urb + min(hr, 1.5)
                     hmed = (dem[0] + dem[-1]) / 2
 
                     if visada:
@@ -748,7 +749,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     global Configuracao
     if Configuracao["urb"]:
-        h_urb = max(0, 1.5 + (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+        h_urb = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
     else:
         h_urb = 0
 
@@ -835,10 +836,10 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
-# cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
+cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
 
 
-cobertura = []
+#cobertura = []
 
 
 def addfoliun():
@@ -1037,6 +1038,7 @@ def ptp():
             Densidade_urbana = 1
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
+            h_urb=h_urb+min(hr,1.5)
             if landcover[-1] == 50:
                 urban = 'wi'
             else:
