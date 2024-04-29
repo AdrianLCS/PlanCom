@@ -3,8 +3,6 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-import itmModel
-import ee
 import matplotlib.pyplot as plt
 import Modelos
 
@@ -777,7 +775,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h_urb = 1.5 + max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+    h_urb = 1.5 + abs( (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
 
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
@@ -941,7 +939,7 @@ for i in range(len(prs)):
     else:
         urban = 'n'
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-    qs = 9  # 70% das situacões
+    qs = 5 # 70% das situacões
     espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
@@ -980,7 +978,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("nigqs9.txt", "a") as arquivo:
+    with open("nig2.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(medido[i]-espaco_livre))
 
     perdaITMUV.append(total_itm)

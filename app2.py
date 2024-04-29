@@ -749,7 +749,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     global Configuracao
     if Configuracao["urb"]:
-        h_urb = max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+        h_urb = abs((1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
     else:
         h_urb = 0
 
