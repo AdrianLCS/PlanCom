@@ -136,7 +136,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     landcover = landcover0[angulo2][:3 * int(distyx) + 1]
                     distancia = distancia0[angulo2][:int(distyx + 1)]
 
-                    Densidade_urbana = 1
+                    Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
                     hmed = (dem[0] + dem[-1]) / 2
@@ -775,7 +775,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h_urb = 1.5 + abs( (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+    h_urb = abs((1 / Densidade_urbana) * (dsm[-1] - dem[-1]))
 
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
@@ -784,7 +784,7 @@ def obter_vegeta_atravessada1(f, indice, dem, landcover, dsm, hr, ht, distancia)
     dem = np.array(dem)
     dsm = np.array(dsm)
 
-    altur_da_cobertuta = dsm[indice:] - dem[indice:]
+    altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
@@ -814,7 +814,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     dem = np.array(dem)
     dsm = np.array(dsm)
 
-    altur_da_cobertuta = dsm[indice:] - dem[indice:]
+    altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
@@ -863,7 +863,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                 for n in (0, 1, 2):
                     if landcover[3 * (indice_d + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        altur_da_cobertuta2 = dsm[:indice_d] - dem[:indice_d]
+        altur_da_cobertuta2 = abs(dsm[:indice_d] - dem[:indice_d])
         for i in range(len(los2) - 2):
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
@@ -930,7 +930,7 @@ perdas3=[]
 for i in range(len(prs)):
 
     dem, dsm, landcover, distancia = perfil(p1, prs[i])
-    Densidade_urbana = 1
+    Densidade_urbana = 0.7
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
@@ -960,10 +960,9 @@ for i in range(len(prs)):
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
     itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                       teta1, teta2, polarizacao='v', simplificado=0)
-
-    if urban == 'wi':  # and h_urb > hg2 + 0.5:
-        h_urb = 4
-        urb = Modelos.ikegami_model(h_urb, hg2, f)
+    h_urb=h_urb+min(1.5, hg2)
+    if (urban == 'wi') and (h_urb > hg2 + 0.5):
+        urb = Modelos.ikegami_model(h_urb, hg2, f, w=10)
     else:
         urb = 0
     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
@@ -978,7 +977,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("nig2.txt", "a") as arquivo:
+    with open("nidh07vegabs2.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(medido[i]-espaco_livre))
 
     perdaITMUV.append(total_itm)

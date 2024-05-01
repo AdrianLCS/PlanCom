@@ -3,8 +3,6 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-import itmModel
-import ee
 import matplotlib.pyplot as plt
 import Modelos
 
@@ -138,7 +136,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     landcover = landcover0[angulo2][:3 * int(distyx) + 1]
                     distancia = distancia0[angulo2][:int(distyx + 1)]
 
-                    Densidade_urbana = 1
+                    Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
                     hmed = (dem[0] + dem[-1]) / 2
@@ -793,7 +791,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     he1, he2, Dh = ajuste(dem, distancia, hg1, hg2, dl1, dl2)
     # h é a altura dos telaho m
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
-    h_urb = 1.5 + max(0, (1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+    h_urb = abs((1 / Densidade_urbana) * (dsm[-1] - dem[-1]))
 
     return d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada
 
@@ -802,7 +800,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     dem = np.array(dem)
     dsm = np.array(dsm)
 
-    altur_da_cobertuta = dsm[indice:] - dem[indice:]
+    altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
@@ -851,7 +849,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                 for n in (0, 1, 2):
                     if landcover[3 * (indice_d + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        altur_da_cobertuta2 = dsm[:indice_d] - dem[:indice_d]
+        altur_da_cobertuta2 = abs(dsm[:indice_d] - dem[:indice_d])
         for i in range(len(los2) - 2):
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
@@ -913,16 +911,17 @@ comparacao=[]
 for i in range(len(pxs)):
 
     dem, dsm, landcover, distancia = perfil(pxs[i], prs[i])
-    Densidade_urbana = 1
+    Densidade_urbana = 0.7
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
+    h_urb = h_urb + min(hg2, 1.5)
     if landcover[-1] == 50:
         urban = 'wi'
     else:
         urban = 'n'
     yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-    qs = 7  # 70% das situacões
+    qs = 5  # 70% das situacões
     espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
     # colocar a cidicao para chamar itm ou urbano + espaco livre
 
@@ -963,7 +962,7 @@ for i in range(len(pxs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("ohqs7.txt", "a") as arquivo:
+    with open("oh2.txt", "a") as arquivo:
         arquivo.write("\n"+str(pxs[i][0])+","+str(pxs[i][1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 perdas = np.array(perdas)

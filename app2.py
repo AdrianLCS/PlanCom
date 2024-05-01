@@ -3,8 +3,8 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-#from folium.plugins import HeatMap
-#import branca.colormap
+from folium.plugins import HeatMap
+import branca.colormap
 #import ee
 import matplotlib.pyplot as plt
 import Modelos
@@ -145,7 +145,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
-                    h_urb = h_urb + min(hr, 1.5)
+                    h_urb = h_urb + min(hg2, 1.5)
                     hmed = (dem[0] + dem[-1]) / 2
 
                     if visada:
@@ -749,7 +749,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     global Configuracao
     if Configuracao["urb"]:
-        h_urb = abs((1 / Densidade_urbana) * np.mean(dsm[-3:len(dsm)]) - np.mean(dem[-3:len(dem)]))
+        h_urb = abs((1 / Densidade_urbana) * (dsm[-1] - dem[-1]))
     else:
         h_urb = 0
 
@@ -760,7 +760,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     dem = np.array(dem)
     dsm = np.array(dsm)
 
-    altur_da_cobertuta = dsm[indice:] - dem[indice:]
+    altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
@@ -808,7 +808,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                 for n in (0, 1, 2):
                     if landcover[3 * (indice_d + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        altur_da_cobertuta2 = dsm[:indice_d] - dem[:indice_d]
+        altur_da_cobertuta2 = abs(dsm[:indice_d] - dem[:indice_d])
         for i in range(len(los2) - 2):
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
@@ -908,7 +908,7 @@ def addfoliun():
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\nig.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\nidh07rua10vegabs.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
@@ -965,6 +965,7 @@ def addfoliun():
     HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1).add_to(folium_map)
     HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)
     """
+
 
 
     folium_map.add_child(folium.LayerControl())
@@ -1035,10 +1036,10 @@ def ptp():
 
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia, r_global = perfil(p1, p2)
-            Densidade_urbana = 1
+            Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            h_urb=h_urb+min(hr,1.5)
+            h_urb=h_urb+min(hg2,1.5)
             if landcover[-1] == 50:
                 urban = 'wi'
             else:
