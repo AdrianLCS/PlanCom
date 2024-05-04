@@ -872,13 +872,17 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return espesura
 
 cobertura = []
-markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
+"""markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
            {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
+"""
+markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
+
 
 #p1 = (markers[1]['lon'], markers[1]['lat'])
+p1 = (markers[1]['lon'], markers[1]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
-p1 = (markers[2]['lon'], markers[2]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
 ime = 1.5
@@ -886,7 +890,13 @@ PDC = 10
 hg1 = PDC
 hg2 = ime
 
+def add_curvatura_ao_perfil(dem, d, lat):
+    N=len(dem)
+    for i in range(N):
+        dem[i]=dem[i]+((N-i)/2)*d/R(lat)
 
+
+"""
 prs=[]
 with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
     spamreader = np.genfromtxt(csvfile, delimiter=',')
@@ -1033,8 +1043,9 @@ print(med2epV)
 perdas3=np.array(perdas3)
 print(np.mean(medido-perdas3))
 print(np.mean((medido-perdas3)**2))
-
-"""dem, dsm, landcover, distancia = perfil(p1, p2)
+"""
+perdas=[]
+dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
 d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
     dem, dsm,
@@ -1055,7 +1066,7 @@ dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
 
 epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
-itm, variabilidade_situacao, At = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
+itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                                             teta1, teta2, polarizacao='v', simplificado=0)
 
 if urban == 'wi' and h_urb > hg2 + 0.5:
@@ -1072,6 +1083,7 @@ print(
     f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
 
 plt.plot(distancia, dem)
-plt.title('Modelo Digital de Elevação (DEM)')
+plt.title('Perfil do terreno entre o IME e PDC')
+plt.ylabel('Elevação do terreno (m)')
+plt.xlabel('Distância (m)')
 plt.show()
-"""

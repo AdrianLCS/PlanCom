@@ -477,11 +477,17 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
             dl1 = dl1 * (d / (dl1 + dl2))
             dl2 = dl2 * (d / (dl1 + dl2))
 
+
     dl = dl1 + dl2
 
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
     tetae = max((teta1 + teta2), -dl * Ye)
-    Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0)
+
+    if d>dls:
+        Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0)
+    else:
+        dx=d+20000
+
     At = 0
     if simplificado:
         if d <= dls:
