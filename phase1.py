@@ -3,9 +3,26 @@ import rasterio
 from flask import Flask, render_template, request, jsonify
 import os
 import folium
-
 import matplotlib.pyplot as plt
 import Modelos
+from numpy import sin, cos, arccos, pi, round
+
+
+def deg2rad(degrees):
+    radians = degrees * pi / 180
+    return radians
+
+
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+
+    distance = R((latitude1+latitude2)/2) * arccos(
+            (sin(deg2rad(latitude1)) * sin(deg2rad(latitude2))) +
+            (cos(deg2rad(latitude1)) * cos(deg2rad(latitude2)) * cos(deg2rad(theta)))
+            )
+
+    return distance
+
 
 # correcao distancia 6228.6112900782355/5712.1356899878 ou 5719.711764799506
 
@@ -27,6 +44,18 @@ b = 6356752  # m
 Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt": 300,
                 "min_alt": 0}  # ITM ou Epstein-peterson
 mapas = []
+
+
+def Mv(lat):
+    global a
+    global b
+    return ((a*b)**2)/((((a*np.cos(np.pi*lat/180))**2)+((b*np.sin(np.pi*lat/180))**2))**(3/2))
+
+
+def Nh(lat):
+    global a
+    global b
+    return ((a)**2)/((((a*np.cos(np.pi*lat/180))**2)+((b*np.sin(np.pi*lat/180))**2))**(1/2))
 
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
@@ -54,7 +83,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     return retas, d, dem0, dsm0, landcover0, distancia0
 
 
-def parametros_difracao(distancia, dem, ht, hr):
+def parametros_difracao(distancia, dem, ht, hr,frequ):
     angulo = []
     d = distancia[-1]
     aref = (hr + dem[-1] -ht - dem[0]) / d
@@ -64,7 +93,11 @@ def parametros_difracao(distancia, dem, ht, hr):
     hs = [ht + dem[0]]
     h, idl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
-        angulo.append((dem[i] - (dem[0] + ht)) / distancia[i])
+        if i > 6 and i < len(dem) - 6:
+            rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[i], distancia[-1] - distancia[i], frequ)
+        else:
+            rfresn2 = 0
+        angulo.append((dem[i]+rfresn2 - (dem[0] + ht)) / distancia[i])
         if angulo[-1] > maxangulo:
             idl1 = i
             h = dem[i]
@@ -81,6 +114,7 @@ def parametros_difracao(distancia, dem, ht, hr):
         maxangulo = aref
         visada = 1
         for i in range(idl1 + 5, len(dem) - 1):
+
             angulo.append((dem[i] - (dem[idl1])) / (distancia[i] - distancia[idl1]))
             if  (angulo[-1] > maxangulo):
                 idll.append(i)
@@ -139,7 +173,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
 
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
-                        dem, dsm, distancia, ht, hr, Densidade_urbana)
+                        dem, dsm, distancia, ht, hr, Densidade_urbana,f)
                     hmed = (dem[0] + dem[-1]) / 2
 
                     if visada:
@@ -244,14 +278,22 @@ def reta(p1, p2, tranform):
     p1 = np.array(p1)
     p2 = np.array(p2)
     v = p2 - p1
+    modulo=((p2[0]-p1[0])**2+(p2[0]-p1[0])**2)**0.5
+    hori=(abs(v[0]/180)*np.pi)*Nh(p1[1])
+    verti=(abs(v[1]/180)*np.pi)*Mv(p1[1])
+    #dist=((hori**2)+(verti**2))**0.5
+    dist = getDistanceBetweenPointsNew(p1[1],p1[0],p2[1],p2[0])
     modulo = np.linalg.norm(v)
+    modulo = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
     n = int(np.ceil(modulo / tranform))  # precisao de 30 m
     t = np.linspace(0, 1, n)
     r = []
+    unidade_dist = dist / (n-1)
     for i in t:
         r.append(p1 + v * i)
     r = np.array(r)
-    return r
+    #unidade_dist = (modulo / 180) * np.pi * R(p1[1]) / (n - 1)
+    return r, unidade_dist
 
 
 def R(lat):
@@ -435,21 +477,15 @@ def perfil(p1, p2, area=0):
     d = []
     caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
     with rasterio.open(caminho) as src1:
-        inv_transform = ~src1.transform
         transform = src1.transform
-        unidade_distancia = 2 * np.pi * R(p1[1]) / (360 * (1 / transform[0]))
-        r = reta(p1, p2, transform[0])
-        pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
-        x0, y0 = inv_transform * (r[0][0], r[0][1])
-        distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (
-                np.shape(r)[0] - 1)
+        r, distancia = reta(p1, p2, transform[0])
 
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
                                                                      area)
-
+    print("d")
+    print(d[-1])
     return dem, dsm, landcover, d
-
 
 def raio_fresnel(n, d1, d2, f):
     # f em hertz
@@ -748,11 +784,12 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
     return he1, he2, Dh
 
 
-def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
+def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana, frequ):
     angulo = []
     angulor = []
     demr = dem[::-1]
     d = distancia[-1]
+    distanciar = distancia[::-1]
     hg1, hg2 = ht, hr
     aref = np.arctan((-ht - dem[0] + hr + demr[0]) / d)
     visada = 1  # 'visada# '
@@ -764,6 +801,10 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     maxangulor = -aref
 
     for i in range(1, len(dem) - 1):
+        if i>6 and i<len(dem)-6:
+            rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[i], distancia[-1] - distancia[i], frequ)
+        else:
+            rfresn2=0
         angulo.append(np.arctan((dem[i] - (dem[0] + ht)) / distancia[i]))
         if angulo[-1] > maxangulo:
             teta1, dl1, idl1 = angulo[i - 1], distancia[i], i
@@ -772,6 +813,10 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
             maxangulo = max(angulo)
 
     for i in range(1, len(demr) - 1):
+        if i > 6 and i < len(dem) - 6:
+            rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[i], distancia[-1] - distancia[i], frequ)
+        else:
+            rfresn2 = 0
         angulor.append(np.arctan((demr[i] - (demr[0] + hr)) / distancia[i]))
         if angulor[-1] > maxangulor:
             teta2, dl2, idl2 = angulor[i - 1], distancia[i], i
@@ -966,7 +1011,8 @@ for i in range(len(prs)):
     Densidade_urbana = 0.7
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
-                                                                                                              Densidade_urbana)
+                                                                                                              Densidade_urbana,f)
+    print(d)
     h_urb=h_urb+min(hg2,1.5)
     if landcover[-1] == 50:
         urban = 'wi'
@@ -987,7 +1033,7 @@ for i in range(len(prs)):
 
     else:
         demsm=dem
-    dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+    dls, hs = parametros_difracao(distancia, dem, hg1, hg2,f)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
@@ -1014,7 +1060,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("mt2.txt", "a") as arquivo:
+    with open("mtteste.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 

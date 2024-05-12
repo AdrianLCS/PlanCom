@@ -48,6 +48,7 @@ def modelo_epstein_peterson(dls, hs, f):
 
 
 def raio_fresnel(n, d1, d2, f):
+    global c
     # f em Mhertz
     return (n * (c / (f * 1000000)) * d1 * d2 / (d1 + d2)) ** 0.5
 
@@ -313,12 +314,11 @@ def difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg,
     md = (A4 - A3) / (d4 - d3)
     Aed = A3 - md * d3
     Aref = Aed + md * d
-    return Aref, Aed, md
+    return Aref, Aed, md, d4
 
 
-def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0, visada):
+def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0, visada, Aed, md):
     d2 = dls
-    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
     A2 = Aed + md * d2
     AK1 = 0
     AK2 = 0
@@ -383,7 +383,9 @@ def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                 AK1 = md
                 AK2 = 0
     Ael = A2 - AK1 * d2
-
+    print(AK1)
+    print(AK2)
+    print(Ael)
     if visada:
         At = alos(k, dls, Dh, d, md, Aed, he1, he2, Zg)[1]
     else:
@@ -392,13 +394,11 @@ def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
     return Aref, At
 
 
-def scatter_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0):
+def scatter_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0, Aed, md):
     Hs = 47.7
     Ds = 200000
     d5 = dl + Ds
     d6 = d5 + Ds
-    Arefd, Aed, md = difracton_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
-
     A5, h0d5 = ascat(d5, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns)
 
     A6, h0d6 = ascat(d6, Ye, teta1, teta2, he1, he2, k, dl, dl1, dl2, Ns, h0d5)
@@ -450,7 +450,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     s = d
     f0 = 47.7  # em MHz.m
     k = f / f0
-    N0 = 320  # padaro para continenteal sub-tropical
+    N0 = 301  # padaro para continenteal sub-tropical
     z1 = 9460
     N1 = 179.3
     Ns = N0 * np.exp(-h0 / z1)
@@ -468,6 +468,7 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     dls2 = (2 * he2 / Ye) ** 0.5
     dls = dls1 + dls2
 
+
     if visada:
         dl1 = dls1 * np.exp(-0.07 * ((Dh / max(he1, 5)) ** 0.5))
         teta1 = (0.65 * Dh * ((dls1 / dl1) - 1) - 2 * he1) / dls1
@@ -483,8 +484,10 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
     Xae = (k * (Ye ** 2)) ** (-1 / 3)
     tetae = max((teta1 + teta2), -dl * Ye)
 
-    if d>dls:
-        Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0)
+    Aref,Aed, md, d4 = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
+    Ascat=0
+    if d>d4:
+        Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0, Aed, md)
     else:
         dx=d+20000
 
@@ -501,15 +504,16 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
 
     else:
         if d <= dls:
-            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0,visada)
+            Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0,visada, Aed, md)
         elif (d > dls) and (d <= dx):
-            Aref = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)[0]
+            Aref = Aref
         else:
-            Aref = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0)[0]
+            Aref = Ascat
 
     yts = atenuaco_por_icertezas_sitacao(qs, he1, he2, k, d, yt)
 
     variabilidade_da_situacao = -yts
+
 
     return Aref, variabilidade_da_situacao, At, dls
 

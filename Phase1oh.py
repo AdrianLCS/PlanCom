@@ -5,6 +5,25 @@ import os
 import folium
 import matplotlib.pyplot as plt
 import Modelos
+from numpy import sin, cos, arccos, pi, round
+
+
+def deg2rad(degrees):
+    radians = degrees * pi / 180
+    return radians
+
+
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+
+    distance = R((latitude1+latitude2)/2) * arccos(
+            (sin(deg2rad(latitude1)) * sin(deg2rad(latitude2))) +
+            (cos(deg2rad(latitude1)) * cos(deg2rad(latitude2)) * cos(deg2rad(theta)))
+            )
+
+    return distance
+
+
 
 # correcao distancia 6228.6112900782355/5712.1356899878 ou 5719.711764799506
 
@@ -53,7 +72,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     return retas, d, dem0, dsm0, landcover0, distancia0
 
 
-def parametros_difracao(distancia, dem, ht, hr):
+def parametros_difracao(distancia, dem, ht, hr, frequ):
     angulo = []
     d = distancia[-1]
     aref = (hr + dem[-1] -ht - dem[0]) / d
@@ -63,7 +82,11 @@ def parametros_difracao(distancia, dem, ht, hr):
     hs = [ht + dem[0]]
     h, idl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
-        angulo.append((dem[i] - (dem[0] + ht)) / distancia[i])
+        if i > 6 and i < len(dem) - 6:
+            rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[i], distancia[-1] - distancia[i], frequ)
+        else:
+            rfresn2 = 0
+        angulo.append((dem[i] + rfresn2 - (dem[0] + ht)) / distancia[i])
         if angulo[-1] > maxangulo:
             idl1 = i
             h = dem[i]
@@ -100,7 +123,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
     yt = 1
-    qs = 7
+    qs = 5
     unidade_distancia = 2 * np.pi * R(ponto[1]) / (1296000)
     retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
                                                                        precisao)
@@ -240,20 +263,27 @@ def criamapa(dem_file, img_file):
 
 
 def reta(p1, p2, tranform):
+    global a
     p1 = np.array(p1)
     p2 = np.array(p2)
     v = p2 - p1
+
     modulo = np.linalg.norm(v)
     n = int(np.ceil(modulo / tranform))  # precisao de 30 m
     t = np.linspace(0, 1, n)
     r = []
+    unidade_dist=(modulo*np.pi * a / 180)/(n-1)
     for i in t:
         r.append(p1 + v * i)
     r = np.array(r)
-    return r
+    dist = getDistanceBetweenPointsNew(p1[1], p1[0], p2[1], p2[0])
+    unidade_dist = dist / (n - 1)
+    return r, unidade_dist
 
 
 def R(lat):
+    global a
+    global b
     return (((((a ** 2) * np.cos(lat * np.pi / 180)) ** 2) + (((b ** 2) * np.sin(lat * np.pi / 180)) ** 2)) / (
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
@@ -443,15 +473,8 @@ def perfil(p1, p2, area=0):
     d = []
     caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
     with rasterio.open(caminho) as src1:
-        inv_transform = ~src1.transform
         transform = src1.transform
-        unidade_distancia = 2 * np.pi * R(p1[1]) / (360 * (1 / transform[0]))
-        r = reta(p1, p2, transform[0])
-        pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
-        x0, y0 = inv_transform * (r[0][0], r[0][1])
-        distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (
-                np.shape(r)[0] - 1)
-
+        r, distancia = reta(p1, p2, transform[0])
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
                                                                      area)
@@ -915,6 +938,7 @@ for i in range(len(pxs)):
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
+    print(d)
     h_urb = h_urb + min(hg2, 1.5)
     if landcover[-1] == 50:
         urban = 'wi'
@@ -935,7 +959,7 @@ for i in range(len(pxs)):
 
     else:
         demsm=dem
-    dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+    dls, hs = parametros_difracao(distancia, dem, hg1, hg2, f)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
@@ -962,7 +986,7 @@ for i in range(len(pxs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("oh2.txt", "a") as arquivo:
+    with open("ohteste.txt", "a") as arquivo:
         arquivo.write("\n"+str(pxs[i][0])+","+str(pxs[i][1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 perdas = np.array(perdas)

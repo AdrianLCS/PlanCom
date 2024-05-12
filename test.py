@@ -5,6 +5,24 @@ import os
 import folium
 import matplotlib.pyplot as plt
 import Modelos
+from numpy import sin, cos, arccos, pi, round
+
+
+def deg2rad(degrees):
+    radians = degrees * pi / 180
+    return radians
+
+
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+
+    distance = R((latitude1+latitude2)/2) * arccos(
+            (sin(deg2rad(latitude1)) * sin(deg2rad(latitude2))) +
+            (cos(deg2rad(latitude1)) * cos(deg2rad(latitude2)) * cos(deg2rad(theta)))
+            )
+
+    return distance
+
 
 # correcao distancia 6228.6112900782355/5712.1356899878 ou 5719.711764799506
 
@@ -27,6 +45,16 @@ Configuracao = {"modelo": "ITM", "urb": 1, "veg": 1, "precisao": 0.5, "max_alt":
                 "min_alt": 0}  # ITM ou Epstein-peterson
 mapas = []
 
+def Mv(lat):
+    global a
+    global b
+    return ((a*b)**2)/((((a*np.cos(np.pi*lat/180))**2)+((b*np.sin(np.pi*lat/180))**2))**(3/2))
+
+
+def Nh(lat):
+    global a
+    global b
+    return ((a)**2)/((((a*np.cos(np.pi*lat/180))**2)+((b*np.sin(np.pi*lat/180))**2))**(1/2))
 
 def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     comprimento_de_onda = c / (f * 1000000)
@@ -53,7 +81,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     return retas, d, dem0, dsm0, landcover0, distancia0
 
 
-def parametros_difracao(distancia, dem, ht, hr):
+def parametros_difracao(distancia, dem, ht, hr,frequ):
     angulo = []
     d = distancia[-1]
     aref = (hr + dem[-1] -ht - dem[0]) / d
@@ -63,7 +91,11 @@ def parametros_difracao(distancia, dem, ht, hr):
     hs = [ht + dem[0]]
     h, idl1, teta1 = 0, 0, 0
     for i in range(1, len(dem) - 1):
-        angulo.append((dem[i] - (dem[0] + ht)) / distancia[i])
+        if i > 6 and i < len(dem) - 6:
+            rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[i], distancia[-1] - distancia[i], frequ)
+        else:
+            rfresn2 = 0
+        angulo.append((dem[i] + rfresn2 - (dem[0] + ht)) / distancia[i])
         if angulo[-1] > maxangulo:
             idl1 = i
             h = dem[i]
@@ -100,7 +132,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
     yt = 1
-    qs = 7
+    qs = 5
     unidade_distancia = 2 * np.pi * R(ponto[1]) / (1296000)
     retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
                                                                        precisao)
@@ -243,14 +275,21 @@ def reta(p1, p2, tranform):
     p1 = np.array(p1)
     p2 = np.array(p2)
     v = p2 - p1
+    hori=(abs(v[0]/180)*np.pi)*Nh(p1[1])
+    verti=(abs(v[1]/180)*np.pi)*Mv(p1[1])
+    dist=((hori**2)+(verti**2))**0.5
     modulo = np.linalg.norm(v)
+
     n = int(np.ceil(modulo / tranform))  # precisao de 30 m
     t = np.linspace(0, 1, n)
     r = []
+    unidade_dist = dist / (n-1)
     for i in t:
         r.append(p1 + v * i)
     r = np.array(r)
-    return r
+    dist = getDistanceBetweenPointsNew(p1[1], p1[0], p2[1], p2[0])
+    unidade_dist = dist / (n - 1)
+    return r, unidade_dist
 
 
 def R(lat):
@@ -443,14 +482,9 @@ def perfil(p1, p2, area=0):
     d = []
     caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
     with rasterio.open(caminho) as src1:
-        inv_transform = ~src1.transform
         transform = src1.transform
-        unidade_distancia = 2 * np.pi * R(p1[1]) / (360 * (1 / transform[0]))
-        r = reta(p1, p2, transform[0])
-        pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
-        x0, y0 = inv_transform * (r[0][0], r[0][1])
-        distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (
-                np.shape(r)[0] - 1)
+        r, unidade_distancia = reta(p1, p2, transform[0])
+        distancia=unidade_distancia
 
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
@@ -872,16 +906,16 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return espesura
 
 cobertura = []
-"""markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
+markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
            {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
-"""
-markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
 
+"""markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
+"""
 
 #p1 = (markers[1]['lon'], markers[1]['lat'])
-p1 = (markers[1]['lon'], markers[1]['lat'])
+p1 = (markers[2]['lon'], markers[2]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
@@ -896,7 +930,6 @@ def add_curvatura_ao_perfil(dem, d, lat):
         dem[i]=dem[i]+((N-i)/2)*d/R(lat)
 
 
-"""
 prs=[]
 with open('C:\PythonFlask\PlanCom\medicoes\olagunju_hawau_cal_800mhz_20mhz_10m\\20MHz_10m\Cal_800MHz_20MHz_10m_ABAA.csv') as csvfile:
     spamreader = np.genfromtxt(csvfile, delimiter=',')
@@ -964,7 +997,7 @@ for i in range(len(prs)):
     else:
         demsm = dem
 
-    dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+    dls, hs = parametros_difracao(distancia, dem, hg1, hg2,f)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
@@ -987,7 +1020,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("nidh07vegabs2.txt", "a") as arquivo:
+    with open("nigteste.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(medido[i]-espaco_livre))
 
     perdaITMUV.append(total_itm)
@@ -1043,8 +1076,8 @@ print(med2epV)
 perdas3=np.array(perdas3)
 print(np.mean(medido-perdas3))
 print(np.mean((medido-perdas3)**2))
-"""
-perdas=[]
+
+"""perdas=[]
 dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
 d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
@@ -1056,13 +1089,13 @@ if landcover[-1] == 50:
 else:
     urban = 'n'
 yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-qs = 7  # 70% das situacões
+qs = 5  # 70% das situacões
 espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
 # colocar a cidicao para chamar itm ou urbano + espaco livre
 
 h0 = (dem[0] + dem[-1]) / 2
 
-dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
+dls, hs = parametros_difracao(distancia, dem, hg1, hg2, f)
 
 epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
 espaco_livre = Modelos.friis_free_space_loss_db(f, d)
@@ -1082,8 +1115,22 @@ print(perdas)
 print(
     f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
 
+er=15
+sigma=0.005
+polarizacao='v'
+Z0 = 376.62  # Ohms
+erlinha = er + ((Z0 * sigma / (800/47.7)) * 1j)
+if polarizacao == 'v':
+    Zg = ((erlinha - 1) ** 0.5) / erlinha
+else:
+    Zg = (erlinha - 1) ** 0.5
+print(Zg)
+
+print(h0)
+
 plt.plot(distancia, dem)
 plt.title('Perfil do terreno entre o IME e PDC')
 plt.ylabel('Elevação do terreno (m)')
 plt.xlabel('Distância (m)')
 plt.show()
+"""

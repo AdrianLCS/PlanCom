@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 # file_path = "C:\PythonFlask\PlanCom\Raster\S27\ASTGTMV003_S27W049_dem.tif" #ASTGTMV003_S23W044_dem long de 22 a 23 e lat de 43 a 44
 file_path = "C:\PythonFlask\PlanCom\Raster\S23W044.tif"
 
-correcao= 6228.6112900782355/5693.127435777792
 def reta(p1, p2):
     p1 = np.array(p1)
     p2 = np.array(p2)

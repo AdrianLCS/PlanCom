@@ -27,6 +27,21 @@ Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
 
 mapas=[]
 
+def deg2rad(degrees):
+    radians = degrees * np.pi / 180
+    return radians
+
+
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+
+    distance = R((latitude1+latitude2)/2) * np.arccos(
+            (np.sin(deg2rad(latitude1)) * np.sin(deg2rad(latitude2))) +
+            (np.cos(deg2rad(latitude1)) * np.cos(deg2rad(latitude2)) * np.cos(deg2rad(theta)))
+            )
+    return distance
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -291,7 +306,8 @@ def reta(p1, p2, tranform):
     for i in t:
         r.append(p1 + v * i)
     r = np.array(r)
-    return r
+    dist=getDistanceBetweenPointsNew(p1[1], p1[0], p2[1], p2[0])/(n-1)
+    return r, dist
 
 
 def R(lat):
@@ -400,14 +416,8 @@ def perfil(p1, p2, area=0):
     d = []
     caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
     with rasterio.open(caminho) as src:
-        inv_transform = ~src.transform
         transform = src.transform
-        unidade_distancia = 2 * np.pi * R(p1[1]) / (360 * (1 / transform[0]))
-        r = reta(p1, p2, transform[0])
-        pixel_xn, pixel_yn = inv_transform * (r[np.shape(r)[0] - 1][0], r[np.shape(r)[0] - 1][1])
-        x0, y0 = inv_transform * (r[0][0], r[0][1])
-        distancia = unidade_distancia * ((((pixel_xn - x0) ** 2) + ((pixel_yn - y0) ** 2)) ** 0.5) / (
-                np.shape(r)[0] - 1)
+        r,distancia = reta(p1, p2, transform[0])
 
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
