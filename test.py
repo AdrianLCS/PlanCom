@@ -15,11 +15,12 @@ def deg2rad(degrees):
 
 def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
     theta = longitude1 - longitude2
-
-    distance = R((latitude1+latitude2)/2) * arccos(
-            (sin(deg2rad(latitude1)) * sin(deg2rad(latitude2))) +
-            (cos(deg2rad(latitude1)) * cos(deg2rad(latitude2)) * cos(deg2rad(theta)))
-            )
+    latitude1=deg2rad(latitude1)
+    latitude2 = deg2rad(latitude2)
+    longitude1 = deg2rad(longitude1)
+    longitude2 = deg2rad(longitude2)
+    distance = 2*R((latitude1+latitude2)/2) * np.arcsin(((np.sin((latitude2-latitude1)/2))**2+
+                                                         np.cos(latitude1)*np.cos(latitude2)*((np.sin((longitude2-longitude1)/2))**2))**0.5)
 
     return distance
 
@@ -906,16 +907,16 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return espesura
 
 cobertura = []
-markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
+"""markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
            {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
-
-"""markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
 """
+markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
+
 
 #p1 = (markers[1]['lon'], markers[1]['lat'])
-p1 = (markers[2]['lon'], markers[2]['lat'])
+p1 = (markers[1]['lon'], markers[1]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
@@ -923,7 +924,7 @@ ime = 1.5
 PDC = 10
 hg1 = PDC
 hg2 = ime
-
+"""
 def add_curvatura_ao_perfil(dem, d, lat):
     N=len(dem)
     for i in range(N):
@@ -1076,8 +1077,9 @@ print(med2epV)
 perdas3=np.array(perdas3)
 print(np.mean(medido-perdas3))
 print(np.mean((medido-perdas3)**2))
+"""
 
-"""perdas=[]
+perdas=[]
 dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
 d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
@@ -1133,4 +1135,3 @@ plt.title('Perfil do terreno entre o IME e PDC')
 plt.ylabel('Elevação do terreno (m)')
 plt.xlabel('Distância (m)')
 plt.show()
-"""

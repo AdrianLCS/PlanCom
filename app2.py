@@ -22,23 +22,34 @@ a = 6378137  # m
 b = 6356752  # m
 
 Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
-# mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif', 'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
+mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif', 'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
 
 
-mapas=[]
+#mapas=[]
 
 def deg2rad(degrees):
     radians = degrees * np.pi / 180
     return radians
 
 
-def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+"""def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
     theta = longitude1 - longitude2
 
     distance = R((latitude1+latitude2)/2) * np.arccos(
             (np.sin(deg2rad(latitude1)) * np.sin(deg2rad(latitude2))) +
             (np.cos(deg2rad(latitude1)) * np.cos(deg2rad(latitude2)) * np.cos(deg2rad(theta)))
             )
+    return distance
+"""
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+    latitude1=deg2rad(latitude1)
+    latitude2 = deg2rad(latitude2)
+    longitude1 = deg2rad(longitude1)
+    longitude2 = deg2rad(longitude2)
+    distance = 2*R((latitude1+latitude2)/2) * np.arcsin(((np.sin((latitude2-latitude1)/2))**2+
+                                                         np.cos(latitude1)*np.cos(latitude2)*((np.sin((longitude2-longitude1)/2))**2))**0.5)
+
     return distance
 
 
@@ -152,11 +163,11 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     if angulo < 0:
                         angulo = 2 * np.pi + angulo
                     angulo2 = int((180 * angulo / np.pi) * precisao)
-                    r = retas[angulo2][:int(distyx + 1)]
-                    dem = dem0[angulo2][:int(distyx + 1)]
-                    dsm = dsm0[angulo2][:int(distyx + 1)]
-                    landcover = landcover0[angulo2][:3 * int(distyx) + 1]
-                    distancia = distancia0[angulo2][:int(distyx + 1)]
+                    r = retas[angulo2][:int(distyx)]
+                    dem = dem0[angulo2][:int(distyx)]
+                    dsm = dsm0[angulo2][:int(distyx)]
+                    landcover = landcover0[angulo2][:3 * int(distyx-1) + 1]
+                    distancia = distancia0[angulo2][:int(distyx)]
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
@@ -911,7 +922,7 @@ def addfoliun():
 
     for i in mapas:
         carregamapa(i[0], i[1]).add_to(folium_map)
-    """
+    """ 
     medido=[]
     dadosmedido=[]
     dadositm = []
@@ -1112,7 +1123,7 @@ def area():
                 ht = i['h']
         hr = 2
         caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
-        precisao = 0.5
+        precisao = 0.5 #precisao 1 grau em grau, precisao 2= 0.5  em dois graus, precição n=1/n em 1/n graus
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr,
                                             float(request.form.get("f")), precisao)
 

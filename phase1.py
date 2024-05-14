@@ -13,13 +13,23 @@ def deg2rad(degrees):
     return radians
 
 
-def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+"""def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
     theta = longitude1 - longitude2
 
-    distance = R((latitude1+latitude2)/2) * arccos(
-            (sin(deg2rad(latitude1)) * sin(deg2rad(latitude2))) +
-            (cos(deg2rad(latitude1)) * cos(deg2rad(latitude2)) * cos(deg2rad(theta)))
+    distance = R((latitude1+latitude2)/2) * np.arccos(
+            (np.sin(deg2rad(latitude1)) * np.sin(deg2rad(latitude2))) +
+            (np.cos(deg2rad(latitude1)) * np.cos(deg2rad(latitude2)) * np.cos(deg2rad(theta)))
             )
+    return distance
+"""
+def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
+    theta = longitude1 - longitude2
+    latitude1=deg2rad(latitude1)
+    latitude2 = deg2rad(latitude2)
+    longitude1 = deg2rad(longitude1)
+    longitude2 = deg2rad(longitude2)
+    distance = 2*R((latitude1+latitude2)/2) * np.arcsin(((np.sin((latitude2-latitude1)/2))**2+
+                                                         np.cos(latitude1)*np.cos(latitude2)*((np.sin((longitude2-longitude1)/2))**2))**0.5)
 
     return distance
 
@@ -1060,7 +1070,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("mtteste.txt", "a") as arquivo:
+    with open("mt3.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 
