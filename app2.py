@@ -917,11 +917,13 @@ def addfoliun():
         print('Erro na biblioteca Earth Engine')
     """
 
-    for i in cobertura:
-        criamapa(i['raster'], i['img']).add_to(folium_map)
 
     for i in mapas:
         carregamapa(i[0], i[1]).add_to(folium_map)
+
+    for i in cobertura:
+        criamapa(i['raster'], i['img']).add_to(folium_map)
+
 
     """medido=[]
     dadosmedido=[]
@@ -985,7 +987,6 @@ def addfoliun():
     HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1).add_to(folium_map)
     HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1).add_to(folium_map)
     HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)"""
-
 
 
 
