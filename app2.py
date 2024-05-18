@@ -311,7 +311,7 @@ def reta(p1, p2, tranform):
     p2 = np.array(p2)
     v = p2 - p1
     modulo = np.linalg.norm(v)
-    n = int(np.ceil(modulo / tranform))  # precisao de 30 m
+    n = int(np.ceil(modulo / tranform))  # tranform=1/3600
     t = np.linspace(0, 1, n)
     r = []
     for i in t:
@@ -922,14 +922,14 @@ def addfoliun():
 
     for i in mapas:
         carregamapa(i[0], i[1]).add_to(folium_map)
-    """ 
-    medido=[]
+
+    """medido=[]
     dadosmedido=[]
     dadositm = []
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\nidh07rua10vegabs.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\nigteste.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
@@ -984,8 +984,8 @@ def addfoliun():
     HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1).add_to(folium_map)
     HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1).add_to(folium_map)
     HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1).add_to(folium_map)
-    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)
-    """
+    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)"""
+
 
 
 
