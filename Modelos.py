@@ -486,16 +486,16 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
 
     Aref,Aed, md, d4 = difracton_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0)
     Ascat=0
-    if d>d4:
+    if d>dls:
         Ascat, dx = scatter_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, Ns, f, h0, Aed, md)
     else:
-        dx=d+20000
+        dx=d+200000
 
     At = 0
     if simplificado:
-        if d <= dls:
+        if d < dls:
             Aref = 20 * np.log10(1 + (dl * Dh / (he1 * he2)))
-        elif (d > dls) and (d <= dx):
+        elif (d >= dls) and (d <= dx):
             a = 6370 / (1 - 0.04665 * np.exp(0.005577 * Ns))
             Aref = (1 + 0.045 * ((Dh / (c / (f * 1000000))) ** 0.5) * (((a * tetae + dl) / d) ** 0.5)) ** (-1)
         else:
@@ -503,9 +503,9 @@ def longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada
             Aref = H0 + 10 * np.log10(f * (tetae ** 4)) - 0.1 * (Ns - 301) * np.exp(-tetae * d / 40)
 
     else:
-        if d <= dls:
+        if d < dls:
             Aref, At = los_atenuatio(s, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, hg1, hg2, Xae, f, h0,visada, Aed, md)
-        elif (d > dls) and (d <= dx):
+        elif (d >= dls) and (d <= dx):
             Aref = Aref
         else:
             Aref = Ascat
