@@ -956,8 +956,8 @@ for i in range(len(pxs)):
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
     print(d)
-    h_urb = h_urb + min(hg2, 1.5)
-    if landcover[-1] == 50:
+    h_urb = h_urb + 0.5
+    if (landcover[-1] == 50)or(landcover[-2] == 50)or(landcover[-3] == 50):
         urban = 'wi'
     else:
         urban = 'n'
@@ -996,7 +996,7 @@ for i in range(len(pxs)):
     perdas.append(itm+vegetacao+urb+variabilidade_situacao)
     perdas2.append(epstein+vegetacao+urb)
 
-    if (Dh>90) and (d<=0.7*dls_LR)or (d<0.1*dls_LR):
+    if (Dh>90) and (d<=0.7*dls_LR):
         pd3=epstein + vegetacao + urb
         perdas3.append(pd3)
     else:

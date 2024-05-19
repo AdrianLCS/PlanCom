@@ -171,7 +171,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
-                    h_urb = h_urb + min(hg2, 1.5)
+                    h_urb = h_urb + 0.5
                     hmed = (dem[0] + dem[-1]) / 2
 
                     if visada:
@@ -179,7 +179,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     else:
 
                         if Configuracao["urb"]:
-                            if (landcover[-1] == 50) and (h_urb > hg2 + 0.5):
+                            if ((landcover[-1] == 50)or(landcover[-2] == 50)or(landcover[-3] == 50)) and (h_urb > hg2 + 0.5):
                                 urb = Modelos.ikegami_model(h_urb, hg2, f)
                             else:
                                 urb = 0
@@ -1061,8 +1061,8 @@ def ptp():
             Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            h_urb=h_urb+min(hg2,1.5)
-            if landcover[-1] == 50:
+            h_urb=h_urb+0.5
+            if (landcover[-1] == 50)or(landcover[-2] == 50)or(landcover[-3] == 50):
                 urban = 'wi'
             else:
                 urban = 'n'

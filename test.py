@@ -922,19 +922,19 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i + indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     """
-    return espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
+    return 0.5*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 cobertura = []
-"""markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
+markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
            {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
-"""
-markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
+
+"""markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
+"""
 
-
+p1 = (markers[2]['lon'], markers[2]['lat'])
 #p1 = (markers[1]['lon'], markers[1]['lat'])
-p1 = (markers[1]['lon'], markers[1]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
@@ -942,7 +942,8 @@ ime = 1.5
 PDC = 10
 hg1 = PDC
 hg2 = ime
-"""
+
+
 def add_curvatura_ao_perfil(dem, d, lat):
     N=len(dem)
     for i in range(N):
@@ -996,7 +997,7 @@ for i in range(len(prs)):
     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(dem, dsm,
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
-    if landcover[-1] == 50:
+    if (landcover[-1] == 50)or(landcover[-2] == 50)or(landcover[-3] == 50):
         urban = 'wi'
     else:
         urban = 'n'
@@ -1022,7 +1023,7 @@ for i in range(len(prs)):
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
     itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                       teta1, teta2, polarizacao='v', simplificado=0)
-    h_urb=h_urb+min(1.5, hg2)
+    h_urb=h_urb+0.5
     if (urban == 'wi') and (h_urb > hg2 + 0.5):
         urb = Modelos.ikegami_model(h_urb, hg2, f, w=10)
     else:
@@ -1032,15 +1033,15 @@ for i in range(len(prs)):
     total_epstein_peterson = espaco_livre+ urb + vegetacao + epstein
     perdas.append((espaco_livre,urb,vegetacao,itm+variabilidade_situacao,epstein, medido[i]))
 
-    if (Dh>90) and (d<=0.7*dls_LR)or (d<0.1*dls_LR):
-        pd3=epstein + vegetacao + urb
+    if (Dh>90) and (d<=0.7*dls_LR):
+        pd3=epstein + vegetacao + urb+espaco_livre
         perdas3.append(pd3)
     else:
-        pd3=itm+vegetacao+urb+variabilidade_situacao
+        pd3=itm+vegetacao+urb+variabilidade_situacao+espaco_livre
         perdas3.append(pd3)
 
     with open("nigteste.txt", "a") as arquivo:
-        arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(medido[i]-espaco_livre))
+        arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3-espaco_livre)+","+str(medido[i]-espaco_livre))
 
     perdaITMUV.append(total_itm)
     perdasepsteinUV.append(total_epstein_peterson)
@@ -1095,9 +1096,8 @@ print(med2epV)
 perdas3=np.array(perdas3)
 print(np.mean(medido-perdas3))
 print(np.mean((medido-perdas3)**2))
-"""
 
-perdas=[]
+"""perdas=[]
 dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
 d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
@@ -1153,3 +1153,4 @@ plt.title('Perfil do terreno entre o IME e PDC')
 plt.ylabel('Elevação do terreno (m)')
 plt.xlabel('Distância (m)')
 plt.show()
+"""
