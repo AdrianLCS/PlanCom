@@ -825,6 +825,8 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
+        contar0=0
+        rfresn3 = 0.6 * Modelos.raio_fresnel(1, distancia[-1]/2, distancia[-1]/2, f)
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
         c = (dem[0] + ht - dem[-1] - hr)
         x = np.array(distancia)
@@ -835,10 +837,14 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             y = m * x + c
             los = y - (dem - (dem[-1] + hr))
         for i in range(len(los) - 1):
+            if los[i]< ((rfresn3*(abs(len(los)-1)/2-i)*2/(len(los)-1))):
+                contar0=contar0+1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        if (contar0>0) and (espesura>100):
+            espesura=espesura/2
 
 
     else:
@@ -864,18 +870,31 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         else:
             y2 = m2 * x2 + c2
             los2 = y2 - (dem[:indice_d+1] - (dem[indice_d]))
-
+        contar1=0
+        contar2=0
         for i in range(len(los) - 1):
+            if los[i]< ((rfresn*(len(los)-i-1)/(len(los)-1))):
+                contar1=contar1+1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+
+        if (contar1>0) and (espesura>100):
+            espesura=espesura/2
+        ref = espesura
         altur_da_cobertuta2 = abs(dsm[:indice_d+1] - dem[:indice_d+1])
         for i in range(len(los2) - 2):
+            if los2[i]<((rfresn2*(len(los2)-i-2)/(len(los2)-2))):
+                contar2=contar2+1
+
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        if (contar2>0) and (espesura>100):
+            espesura = ref + (espesura - ref) / 2
+
     """
         if indice - indice_d > 4:
             altur_da_cobertuta3 = dsm[indice_d:indice] - dem[indice_d:indice]
@@ -895,7 +914,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i + indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     """
-    return 0.5*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais/
+    return 0.6*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 cobertura = []
 markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.7},
@@ -957,7 +976,7 @@ for i in range(len(pxs)):
                                                                                                               Densidade_urbana)
     print(d)
     h_urb = h_urb + 0.5
-    if (landcover[-1] == 50)or(landcover[-2] == 50)or(landcover[-3] == 50):
+    if (landcover[-1] == 50)or(landcover[-2] == 50):
         urban = 'wi'
     else:
         urban = 'n'

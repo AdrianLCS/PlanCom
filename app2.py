@@ -784,6 +784,8 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
+        contar0=0
+        rfresn3 = 0.6 * Modelos.raio_fresnel(1, distancia[-1]/2, distancia[-1]/2, f)
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
         c = (dem[0] + ht - dem[-1] - hr)
         x = np.array(distancia)
@@ -794,10 +796,14 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             y = m * x + c
             los = y - (dem - (dem[-1] + hr))
         for i in range(len(los) - 1):
+            if los[i]< ((rfresn3*(abs(len(los)-1)/2-i)*2/(len(los)-1))):
+                contar0=contar0+1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        if (contar0>0) and (espesura>100):
+            espesura=espesura/2
 
 
     else:
@@ -823,18 +829,31 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         else:
             y2 = m2 * x2 + c2
             los2 = y2 - (dem[:indice_d+1] - (dem[indice_d]))
-
+        contar1=0
+        contar2=0
         for i in range(len(los) - 1):
+            if los[i]< ((rfresn*(len(los)-i-1)/(len(los)-1))):
+                contar1=contar1+1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+
+        if (contar1>0) and (espesura>100):
+            espesura=espesura/2
+        ref = espesura
         altur_da_cobertuta2 = abs(dsm[:indice_d+1] - dem[:indice_d+1])
         for i in range(len(los2) - 2):
+            if los2[i]<((rfresn2*(len(los2)-i-2)/(len(los2)-2))):
+                contar2=contar2+1
+
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+        if (contar2>0) and (espesura>100):
+            espesura = ref + (espesura - ref) / 2
+
     """
         if indice - indice_d > 4:
             altur_da_cobertuta3 = dsm[indice_d:indice] - dem[indice_d:indice]
@@ -854,7 +873,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i + indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     """
-    return 0.5*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
+    return 0.6*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
 cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
@@ -931,7 +950,7 @@ def addfoliun():
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\nigteste.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\nigteste6.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
@@ -949,12 +968,16 @@ def addfoliun():
                     erro.append([m[3], m[2], m[11] - m[12]])
 
             cont += 1
-    dicionario_cores={0:"blue",0.25:"cyan",.5:"lime",0.75:"yellow",1:"red"}
+
+    #dicionario_cores={.1:'00FFFF',.2:'00FFCC',.3:'33CCCC',0.4:'669999',0.5:'996699',0.6:'CC3366',0.7:'FF3366',.8:'FF0033',0.9:'FF0000'}#'00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000'
+    #dicionario_cores = {.2: "blue", .5: "cyan", .6: "lime", .7: "yellow", 1: "red"}
+    #dicionario_cores = {.2: (0,0,255), .5: (0,102,127), .6: (0,255,0), .7: (127,127,0), 1: (255,0,0)}
+
     mini=np.min(medido)
     maxi=np.max(medido)
 
-    dadosmedido.append([4.991688749, 8.320198953, mini])
-    dadosmedido.append([4.991688749, 8.320198953, maxi])
+    dadosmedido.append([41.2819, -81.6231, mini])
+    dadosmedido.append([41.2819, -81.6231, maxi])
     dadositm.append([4.991688749, 8.320198953, mini])
     dadositm.append([4.991688749, 8.320198953, maxi])
     dadosprop.append([4.991688749, 8.320198953, mini])
@@ -979,19 +1002,32 @@ def addfoliun():
 
     erro1 = np.array(erro1)
     erro2 = np.array(erro2)
-    indices=[0, .25,.5,.75,1]
-    colormap=branca.colormap.LinearColormap(['blue', 'cyan', 'lime', 'yellow', 'red'],index=indices)
+    #indices=[0.2,0.5,0.6,0.7, 1]
+    dicionario_cores = {
+        0.3: 'blue',
+        0.4: '#0040FF',  # Intermediate blue
+        0.45: '#0080FF',  # Lighter blue
+        0.5: '#00BFFF',  # Cyan
+        0.55: '#00FFBF',  # Greenish-cyan
+        0.57: '#00FF80',  # Light green
+        0.6: '#80FF00',  # Lime green
+        0.7: 'yellow',  # Yellow-green
+        0.8: '#FFBF00',  # Orange
+        0.9: '#FF8000',  # Dark orange
+        1.0: 'red'
+    }
+    indices = [0.0,0.1, 0.2, 0.3, 0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+    colormap=branca.colormap.LinearColormap(['blue','#0040FF', '#0080FF','#00BFFF','#00FFBF','#00FF80','#80FF00','yellow','#FFBF00','#FF8000','red'],index=indices)
     colormap.scale(0,-mini).add_to(folium_map)
+
     HeatMap(data=dadosmedido, max_zoom=18,radius=15, name='medido',blur=1, gradient=dicionario_cores).add_to(folium_map)
-    HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1).add_to(folium_map)
-    HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1).add_to(folium_map)
-    HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1).add_to(folium_map)
-    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1).add_to(folium_map)"""
-
-
+    HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)
 
     folium_map.add_child(folium.LayerControl())
-    return folium_map
+    return folium_map"""
 
 
 markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
