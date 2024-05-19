@@ -809,27 +809,27 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         x = x - distancia[indice]
         if c < 0:
             y = m * x
-            los = y - (dem[indice:] - (dem[indice] + rfresn))
+            los = y - (dem[indice:] - (dem[indice]))
         else:
             y = m * x + c
-            los = y - (dem[indice:] - (dem[-1] + hr))
+            los = y - (dem[indice:] - (dem[-1]))
         rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[-1] - distancia[indice_d], f)
         m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
         c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
-        x2 = np.array(distancia[:indice_d])
+        x2 = np.array(distancia[:indice_d+1])
         if c2 < 0:
             y2 = m2 * x2
-            los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
+            los2 = y2 - (dem[:indice_d+1] - (dem[0]))
         else:
             y2 = m2 * x2 + c2
-            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn2))
+            los2 = y2 - (dem[:indice_d+1] - (dem[indice_d]))
 
         for i in range(len(los) - 1):
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
-                    if landcover[3 * (indice_d + i) + n] == 10:
+                    if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        altur_da_cobertuta2 = abs(dsm[:indice_d] - dem[:indice_d])
+        altur_da_cobertuta2 = abs(dsm[:indice_d+1] - dem[:indice_d+1])
         for i in range(len(los2) - 2):
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
@@ -854,7 +854,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i + indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     """
-    return espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
+    return 0.5*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
 cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800, 'img': 'Raster\modificado\AS23W044.png', 'h': 10}]

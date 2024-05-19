@@ -905,34 +905,52 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         x = x - distancia[indice]
         if c < 0:
             y = m * x
-            los = y - (dem[indice:] - (dem[indice] + rfresn))
+            los = y - (dem[indice:] - (dem[indice]))
         else:
             y = m * x + c
-            los = y - (dem[indice:] - (dem[-1] + hr))
+            los = y - (dem[indice:] - (dem[-1]))
         rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[-1] - distancia[indice_d], f)
-
         m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
         c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
-        x2 = np.array(distancia[:indice_d])
+        x2 = np.array(distancia[:indice_d+1])
         if c2 < 0:
             y2 = m2 * x2
-            los2 = y2 - (dem[:indice_d] - (dem[0] + ht))
+            los2 = y2 - (dem[:indice_d+1] - (dem[0]))
         else:
             y2 = m2 * x2 + c2
-            los2 = y2 - (dem[:indice_d] - (dem[indice_d] + rfresn2))
+            los2 = y2 - (dem[:indice_d+1] - (dem[indice_d]))
 
         for i in range(len(los) - 1):
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
-                    if landcover[3 * (indice_d + i) + n] == 10:
+                    if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        altur_da_cobertuta2 = abs(dsm[:indice_d] - dem[:indice_d])
+        altur_da_cobertuta2 = abs(dsm[:indice_d+1] - dem[:indice_d+1])
         for i in range(len(los2) - 2):
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-    return  espesura
+    """
+        if indice - indice_d > 4:
+            altur_da_cobertuta3 = dsm[indice_d:indice] - dem[indice_d:indice]
+            m3 = -(dem[indice_d] + rfresn2 - dem[indice] - rfresn) / (distancia[indice] - distancia[indice_d])
+            c3 = (dem[indice_d] + rfresn2 - dem[indice] - rfresn)
+            x3 = np.array(distancia[indice_d:indice]) - distancia[indice_d]
+
+            if c3 < 0:
+                y3 = m3 * x3
+                los3 = y3 - (dem[indice_d:indice] - (dem[indice_d] + rfresn2))
+            else:
+                y3 = m3 * x3 + c3
+                los3 = y3 - (dem[indice_d:indice] - (dem[indice] + rfresn))
+            for i in range(len(los3) - 1):
+                if los3[i] < altur_da_cobertuta3[i]:
+                    for n in (0, 1, 2):
+                        if landcover[3 * (i + indice_d) + n] == 10:
+                            espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
+    """
+    return 0.5*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 def corelacao(lh,lm):
     freq0 = 1 / len(lh)
@@ -1070,7 +1088,7 @@ for i in range(len(prs)):
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("mt3.txt", "a") as arquivo:
+    with open("mtteste.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 
