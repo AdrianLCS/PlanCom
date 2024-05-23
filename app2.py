@@ -950,7 +950,7 @@ def addfoliun():
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\nigteste6.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\mtteste6.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
@@ -964,7 +964,7 @@ def addfoliun():
                     dadositm.append([m[3], m[2], m[10]])
                     dadosprop.append([m[3], m[2], m[11]])
                     dadositms.append([m[3], m[2], m[6]])
-                    medido.append(m[11] - m[12])  #medido.append([m[12], m[6],m[11],m[10]]) #
+                    medido.append([m[12], m[6],m[11],m[10]]) #medido.append(m[11] - m[12])  #
                     erro.append([m[3], m[2], m[11] - m[12]])
 
             cont += 1
@@ -976,14 +976,14 @@ def addfoliun():
     mini=np.min(medido)
     maxi=np.max(medido)
 
-    dadosmedido.append([41.2819, -81.6231, mini])
-    dadosmedido.append([41.2819, -81.6231, maxi])
-    dadositm.append([4.991688749, 8.320198953, mini])
-    dadositm.append([4.991688749, 8.320198953, maxi])
-    dadosprop.append([4.991688749, 8.320198953, mini])
-    dadosprop.append([4.991688749, 8.320198953, maxi])
-    dadositms.append([4.991688749, 8.320198953, mini])
-    dadositms.append([4.991688749, 8.320198953, maxi])
+    dadosmedido.append([50.2819, -81.6231, mini])
+    dadosmedido.append([50.2819, -81.6231, maxi])
+    dadositm.append([50.2819, 8.320198953, mini])
+    dadositm.append([50.2819, 8.320198953, maxi])
+    dadosprop.append([50.2819, 8.320198953, mini])
+    dadosprop.append([50.2819, 8.320198953, maxi])
+    dadositms.append([50.2819, 8.320198953, mini])
+    dadositms.append([50.2819, 8.320198953, maxi])
     #erro.append([4.991688749, 8.320198953, 0])
     dadositm=np.array(dadositm)
     dadositms = np.array(dadositms)
@@ -1018,16 +1018,16 @@ def addfoliun():
     }
     indices = [0.0,0.1, 0.2, 0.3, 0.4,0.5,0.6,0.7,0.8,0.9,1.0]
     colormap=branca.colormap.LinearColormap(['blue','#0040FF', '#0080FF','#00BFFF','#00FFBF','#00FF80','#80FF00','yellow','#FFBF00','#FF8000','red'],index=indices)
-    colormap.scale(0,-mini).add_to(folium_map)
+    colormap.scale(mini,maxi).add_to(folium_map)
 
     HeatMap(data=dadosmedido, max_zoom=18,radius=15, name='medido',blur=1, gradient=dicionario_cores).add_to(folium_map)
     HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1, gradient=dicionario_cores).add_to(folium_map)
     HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1, gradient=dicionario_cores).add_to(folium_map)
     HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1, gradient=dicionario_cores).add_to(folium_map)
-    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)"""
 
     folium_map.add_child(folium.LayerControl())
-    return folium_map"""
+    return folium_map
 
 
 markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},

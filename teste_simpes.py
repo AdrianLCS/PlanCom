@@ -3,6 +3,8 @@ n=20
 t = np.linspace(0, 1, n)
 dem=[1,2,3,4]
 indice=2
+y=np.zeros(2)
+print(y)
 landicover=[1, 1.1,1.2,2,2.1,2.2,3,3.1,3.2,4]
 print(landicover[3 * (indice)])
 dxy=18
