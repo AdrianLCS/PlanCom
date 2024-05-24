@@ -63,21 +63,28 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     d = 10 ** ((limear / 20) + np.log10(comprimento_de_onda) - 1.1)
     d = min(raio, d)
     print(d)
+    qtd_pontos=int(np.ceil(d / unidade_distancia))
+    qtd_retas=int(360 * precisao)
+    print(qtd_pontos)
     retas = []
-    dem0, dsm0, landcover0, distancia0 = [], [], [], []
+    #dem0, dsm0, landcover0, distancia0 = [], [], [], []
+    dem0, dsm0, landcover0, distancia0 = np.zeros((qtd_retas,qtd_pontos)), np.zeros((qtd_retas,qtd_pontos)), np.zeros((qtd_retas,3*(qtd_pontos-1)+1)), np.zeros((qtd_retas,qtd_pontos))
     for i in range(int(360 * precisao)):
-        vet = np.array([np.cos(i * 2 * np.pi / (precisao * 360)), np.sin(
-            i * 2 * np.pi / (precisao * 360))])  # roda no sentido positivo trigonométrio de 0.5 em 0.5 graus
+        vet = np.array([np.cos(i * 2 * np.pi / qtd_retas), np.sin(
+            i * 2 * np.pi / qtd_retas)])  # roda no sentido positivo trigonométrio de 2 em 2 graus
         pf = np.array(ponto) + vet * (
                 d / unidade_distancia) * (1 / 3600)
-        print(ponto)
         print(pf)
         dem, dsm, landcover, distancia, r = perfil(ponto, pf, 1)
-        distancia0.append(distancia)
+        #distancia0.append(distancia)
+        distancia0[i] = distancia
         retas.append(r)
-        dem0.append(dem)
-        dsm0.append(dsm)
-        landcover0.append(landcover)
+        #dem0.append(dem)
+        dem0[i] = dem
+        #dsm0.append(dsm)
+        dsm0[i] = dsm
+        #landcover0.append(landcover)
+        landcover0[i] = landcover
     print('criou as retas')
     return retas, d, dem0, dsm0, landcover0, distancia0
 
@@ -343,8 +350,10 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     dist = distancia * i
                     alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
 
-                    d.append(dist)
-                    dem.append(alt_dem)
+                    #d.append(dist)
+                    d[i]=dist
+                    #dem.append(alt_dem)
+                    dem[i] = alt_dem
                     indice_atual_dem = i
                 else:
                     indice_atual_dem = i
@@ -360,7 +369,8 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
 
                     alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
-                    dsm.append(alt_dsm)
+                    #dsm.append(alt_dsm)
+                    dsm[i]=alt_dsm
                     indice_atual_dsm = i
                 else:
                     break
@@ -373,7 +383,8 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                 if (np.floor(r[i][0]) == np.floor(r[indice_atual_land][0])) and (
                         np.floor(r[i][1]) == np.floor(r[indice_atual_land][1])):
                     pixel_x1_lancover, pixel_y1_landcover = inv_transform_landcover * (r[i][0], r[i][1])
-                    landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                    #landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                    landcover[3*i]=raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)]
                     if i < np.shape(r)[0] - 1:
                         lonpasso = (r[i + 1][0] - r[i][0]) / 3
                         latpasso = (r[i + 1][1] - r[i][1]) / 3
@@ -383,15 +394,21 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                             r[i][0] + 2 * lonpasso, r[i][1] + 2 * latpasso)
                         if (np.floor(r[i][0] + 2 * lonpasso) == np.floor(r[indice_atual_land][0])) and (
                                 np.floor(r[i][1] + 2 * latpasso) == np.floor(r[indice_atual_land][1])):
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)])
+                            landcover[3 * i+1] = raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)]
+                            landcover[3 * i+2] = raster_landcover[int(pixel_y3_landcover)][int(pixel_x3_lancover)]
                         elif (np.floor(r[i][0] + lonpasso) == np.floor(r[indice_atual_land][0])) and (
                                 np.floor(r[i][1] + latpasso) == np.floor(r[indice_atual_land][1])):
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)])
+                            landcover[3 * i+1] = raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)]
+                            landcover[3 * i + 2] = raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)]
                         else:
-                            landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
-                            landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                            #landcover.append(raster_landcover[int(pixel_y1_landcover)][int(pixel_x1_lancover)])
+                            landcover[3 * i + 1] = raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)]
+                            landcover[3 * i + 2] = raster_landcover[int(pixel_y2_landcover)][int(pixel_x2_lancover)]
                     indice_atual_land = i
                 else:
                     break
@@ -421,15 +438,19 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
 
 def perfil(p1, p2, area=0):
     indice_atual = 0
-    dem = []
-    dsm = []
-    landcover = []
-    d = []
+    #dem = []
+    #dsm = []
+    #landcover = []
+    #d = []
     caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
     with rasterio.open(caminho) as src:
         transform = src.transform
         r,distancia = reta(p1, p2, transform[0])
-
+    tamanho=len(r)
+    dem=np.zeros(tamanho,dtype=float)
+    dsm = np.zeros(tamanho,dtype=float)
+    d = np.zeros(tamanho,dtype=float)
+    landcover=np.zeros(3*(tamanho-1)+1,dtype=int)
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
                                                                      area)
@@ -1160,7 +1181,7 @@ def area():
                 ht = i['h']
         hr = 2
         caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
-        precisao = 0.5 #precisao 1 grau em grau, precisao 2= 0.5  em dois graus, precição n=1/n em 1/n graus
+        precisao = 0.5 #precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr,
                                             float(request.form.get("f")), precisao)
 
