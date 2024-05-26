@@ -24,7 +24,7 @@ def perfil(r, src):
     raster = src.read(1)
     transform = src.transform
     inv_transform = ~src.transform
-    unidade_distancia=transform[0]* (10 ** 5)*correcao
+    unidade_distancia=transform[0]* (10 ** 5)
     x0, y0 = inv_transform * (r[0][0], r[0][1])
     dem_raster = []
     d = []

@@ -8,10 +8,18 @@
 
         <form action="{{url_for('ptp')}}" method="post">
             <label for="ponto1">Ponto 1</label>
-            <input type="text" id="ponto1" name="ponto1" required>
+            <select id="ponto1" name="ponto1" required>
+                    {%for marker in markers%}
+                    <option>{{marker["nome"]}}</option>
+                    {% endfor %}
+                </select>
 
             <label for="ponto2">Ponto 2</label>
-            <input type="text" id="ponto2" name="ponto2" required>
+            <select id="ponto2" name="ponto2" required>
+                    {%for marker in markers%}
+                    <option>{{marker["nome"]}}</option>
+                    {% endfor %}
+                </select>
 
             <label for="f">Frequência</label>
             <input type="text" id="f" name="f" required>

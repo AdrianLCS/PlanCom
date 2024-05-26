@@ -17,8 +17,11 @@
 
                 <label>Rádio</label>
                 <select name="radio" id="radio">
+                    {%for radio in radios%}
+                    <option>{{radio}}</option>
+                    {% endfor %}
                     <optgroup label="L3Harris">
-                        <option value=" "></option>
+
                         <option value="7800W">RF - 7800W</option>
                         <option value="7800S">RF - 7800S</option>
                         <option value="7800H">RF - 7800H</option>
