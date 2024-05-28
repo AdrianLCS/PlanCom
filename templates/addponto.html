@@ -1,6 +1,47 @@
 {% extends 'base.html' %}
 {%block conteudo%}
+     <script>
+        function atualizarPotenciaEAntenna() {
+            const nomeSelecionado = document.getElementById('selectRadios').value;
+            fetch(`/get_radio/${nomeSelecionado}`)
+                .then(response => response.json())
+                .then(data => {
+                    const selectPotencia = document.getElementById('selectPotencia');
+                    const inputPotencia = document.getElementById('inputPotencia');
+                    const selectAntenas = document.getElementById('selectAntenas');
 
+                    // Atualizar a potência
+                    if (data.potencia_tipo === 1) {
+                        inputPotencia.style.display = 'none';
+                        selectPotencia.innerHTML = '';
+                        data.potencia_valor.forEach(potencia => {
+                            const option = document.createElement('option');
+                            option.value = potencia;
+                            option.text = potencia;
+                            selectPotencia.appendChild(option);
+                        });
+                        selectPotencia.style.display = 'block';
+                    } else if (data.potencia_tipo === 0) {
+                        selectPotencia.style.display = 'none';
+                        inputPotencia.value = data.potencia_valor[0];
+                        inputPotencia.style.display = 'block';
+                    } else {
+                        selectPotencia.style.display = 'none';
+                        inputPotencia.style.display = 'none';
+                    }
+
+                    // Atualizar a antena
+                    selectAntenas.innerHTML = '';
+                    data.antenas.forEach(antena => {
+                        const option = document.createElement('option');
+                        option.value = antena;
+                        option.text = antena;
+                        selectAntenas.appendChild(option);
+                    });
+                    selectAntenas.style.display = 'block';
+                });
+        }
+    </script>
 <body>
     <div id="AddPoint" style="height: 15%;">
         <h1>Adincionar ponto</h1>
@@ -15,34 +56,24 @@
                 <label for="lon">Longitude:</label>
                 <input type="text" id="lon" name="lon" required>
 
-                <label>Rádio</label>
-                <select name="radio" id="radio">
-                    {%for radio in radios%}
-                    <option>{{radio}}</option>
-                    {% endfor %}
-                    <optgroup label="L3Harris">
+   <label for="selectRadios">Selecione um rádio:</label>
+    <select id="selectRadios" onchange="atualizarPotenciaEAntenna()" name="radio">
+        {% for radio in radios %}
+            <option value="{{ radio.nome }}">{{ radio.nome }}</option>
+        {% endfor %}
+    </select>
 
-                        <option value="7800W">RF - 7800W</option>
-                        <option value="7800S">RF - 7800S</option>
-                        <option value="7800H">RF - 7800H</option>
-                        <option value="7850S">RF - 7850S</option>
-                        <option value="7800M">RF - 7800M</option>
-                        <option value="7800V">RF - 7800V</option>
-                        <option value="9600">MPR - 9600</option>                        
-                    </optgroup>
-                    <optgroup label="Motorola">
-                        <option value="APX">APX2000</option>
-                        <option value="APX">APX2000</option>
-                        <option value="APX">APX2000</option>
-                        <option value="APX">APX2000</option>
-                        <option value="APX">APX2000</option>
-                        <option value="APX">APX2000</option>
-                    </optgroup>
-                </select>
-                <br><br>
-                <input type="text" name="radio">
+    <br><br>
+    <label>Potência:</label>
+    <select id="selectPotencia" style="display: none;" name="pot"></select>
+    <input type="text" id="inputPotencia" style="display: none;" name="pot" />
 
-                <label for="h">Altura da Antena</label>
+    <br><br>
+
+    <label for="selectAntenas">Selecione uma antena:</label>
+    <select id="selectAntenas" style="display: none;" name="ant"></select>
+
+                <label for="h">Altura da antena:</label>
                 <input type="text" id="h" name="h" required>
 
 
@@ -75,7 +106,6 @@
             });
         }
     </script>
-
 
 </body>
 {% endblock conteudo%}

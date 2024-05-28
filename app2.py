@@ -24,10 +24,33 @@ b = 6356752  # m
 Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
 mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
           'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
-radios = ['7800W', '7800V', 'APX2000']
 
 
 # mapas=[]
+
+class Pot():
+    def __init__(self, tipo, valor):
+        self.tipo = tipo  # 0 para omini, 1 para ganho que varia com theta
+        self.valor = valor
+
+class Antena():
+    def __init__(self, nome, tipo, ganho):
+        self.nome = nome  # 0 discreta e 1 é contínua
+        self.tipo = tipo  # 0 para omini, 1 para ganho que varia com theta
+        self.ganho = ganho
+
+
+class Radio():
+    def __init__(self, sensibilidade, freq, nome, ganho, potencia, antenas):
+        self.nome = nome
+        self.sensibilidade = sensibilidade
+        self.faixa_de_freq = freq
+        self.ganho = ganho
+        self.potencia=potencia
+        self.antenas=antenas
+
+#Criar opção de adiconar rádio
+radios = [Radio(-97, [30, 108], '7800V-HH',1,Pot(1,[1,5,10]),[Antena('wip',0,1),Antena('baster',0,1)]),Radio(-97, [800, 900], 'APX2000',1,Pot(0,[0,20]),[Antena('wip',0,1),Antena('baster',0,1)])]
 
 def deg2rad(degrees):
     radians = degrees * np.pi / 180
@@ -1061,10 +1084,10 @@ def addfoliun():
     return folium_map
 
 
-markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4}]
-
+markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
+           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'}]
+radioselecionado=''
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -1087,8 +1110,9 @@ def index():
 
 @app.route('/addponto', methods=['GET', 'POST'])
 def addponto():
+    global radioselecionado
     global radios
-    return render_template('addponto.html',radios=radios)
+    return render_template('addponto.html', radios=radios)
 
 
 @app.route('/add_marker', methods=['POST'])
@@ -1097,9 +1121,14 @@ def add_marker():
     lat = float(request.form.get('lat'))
     lon = float(request.form.get('lon'))
     nome = str(request.form.get('nome'))
+    ra = str(request.form.get('radio'))
+    pot = float(request.form.get('pot'))
     h = float(request.form.get('h'))
+    ant = str(request.form.get('ant'))
+
     # Adicionamos o marcador à lista
-    markers.append({'lat': lat, 'lon': lon, 'nome': nome, 'h': h})
+    markers.append({'lat': lat, 'lon': lon, 'nome': nome, 'h': h, 'radio': ra, 'pot': pot, 'ant': ant})
+    print(markers)
     return jsonify({'result': 'success'})
 
 
@@ -1270,6 +1299,16 @@ def upload_file():
     else:
         return 'Arquivo não suportado'
 
+@app.route('/get_radio/<nome>')
+def get_radio(nome):
+    for radio in radios:
+        if radio.nome == nome:
+            return jsonify({
+                'potencia_tipo': radio.potencia.tipo,
+                'potencia_valor': radio.potencia.valor,
+                'antenas': [antena.nome for antena in radio.antenas]
+            })
+    return jsonify({})
 
 if __name__ == '__main__':
     app.run(debug=True)
