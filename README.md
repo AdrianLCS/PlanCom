@@ -31,10 +31,10 @@ Cálculo da atenuação rádio.
 
 # Tutorial de Uso:
 
+
 A pagina inicial do app é demonstrada abaixo:
 
-![Captura de tela_20221202_170216](https://user-images.githubusercontent.com/114261968/205382791-d01d519e-b41f-464d-ae0f-1488ecd5bae9.png)
-
+![index](https://github.com/AdrianLCS/PlanCom/assets/114261968/6a4c2c03-113b-4422-bbed-cc1a9380c17c)
 Com app aberto, o usuário deve pode selecionar uma imagem clicando no botão "Selecionar Imagem", assim será aberto um seletor de arquivos para o usuário escolher a imagem.
 
 ![Captura de tela_20221202_171008](https://user-images.githubusercontent.com/114261968/205382906-bc3e5fef-3c96-47da-ab00-ddaae626354a.png)
