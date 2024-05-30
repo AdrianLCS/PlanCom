@@ -1,8 +1,6 @@
-import numpy as np
-
-a=np.array([[1,2],[3,4],[5,6]])
+a=[1,2,3,4]
+print(a[2:])
 print(len(a))
-b=np.zeros(4)
-print(b)
-c=[1,2,3]
-d=[1,1.1,1.2,2,2.1,2.2,3]
+for i in range(len(a)):
+    print(a[:i+1])
+    print(a[i])

@@ -1190,7 +1190,7 @@ def ptp():
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-            if (Dh > 100) and (d <= 0.7 * dls_LR) or (d < 0.1 * dls_LR):
+            if (Dh > 90) and (d <= 0.7 * dls_LR):
                 Perda_por_terreno = (epstein)
             else:
                 Perda_por_terreno = (itm + variabilidade_situacao)

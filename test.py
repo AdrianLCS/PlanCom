@@ -944,16 +944,16 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return 0.6*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 cobertura = []
-markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
+"""markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 10},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]
+           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'ABAA', 'h': 10}]"""
 
-"""markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
+markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
            {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5},]
-"""
 
-p1 = (markers[2]['lon'], markers[2]['lat'])
-#p1 = (markers[1]['lon'], markers[1]['lat'])
+
+#p1 = (markers[2]['lon'], markers[2]['lat'])
+p1 = (markers[1]['lon'], markers[1]['lat'])
 p2 = (markers[0]['lon'], markers[0]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
@@ -963,7 +963,7 @@ hg1 = PDC
 hg2 = ime
 
 
-def add_curvatura_ao_perfil(dem, d, lat):
+"""def add_curvatura_ao_perfil(dem, d, lat):
     N=len(dem)
     for i in range(N):
         dem[i]=dem[i]+((N-i)/2)*d/R(lat)
@@ -1115,61 +1115,61 @@ print(med2epV)
 perdas3=np.array(perdas3)
 print(np.mean(medido-perdas3))
 print(np.mean((medido-perdas3)**2))
-
-"""perdas=[]
+"""
+perdas=[]
 dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
-d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
-    dem, dsm,
-    distancia, hg1, hg2,
-    Densidade_urbana)
-if landcover[-1] == 50:
-    urban = 'wi'
-else:
-    urban = 'n'
-yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-qs = 5  # 70% das situacões
-espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
-# colocar a cidicao para chamar itm ou urbano + espaco livre
+vet_perdas= np.zeros(len(dem))
+for u in range(len(dem)):
+    if u>1:
+        d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
+            dem[:u+1], dsm[:u+1],
+            distancia[:u+1], hg1, hg2,
+            Densidade_urbana)
+        if landcover[-1] == 50:
+            urban = 'wi'
+        else:
+            urban = 'n'
+        yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
+        qs = 5  # 70% das situacões
+        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
+        # colocar a cidicao para chamar itm ou urbano + espaco livre
 
-h0 = (dem[0] + dem[-1]) / 2
+        h0 = (dem[0] + dem[-1]) / 2
 
-dls, hs = parametros_difracao(distancia, dem, hg1, hg2, f)
+        dls, hs = parametros_difracao(distancia[:u+1], dem[:u+1], hg1, hg2, f)
 
-epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
-espaco_livre = Modelos.friis_free_space_loss_db(f, d)
-itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
-                                                            teta1, teta2, polarizacao='v', simplificado=0)
+        epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
+        espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+        itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
+                                                                    teta1, teta2, polarizacao='v', simplificado=0)
 
-if urban == 'wi' and h_urb > hg2 + 0.5:
-    urb = Modelos.ikegami_model(h_urb, hg2, f)
-else:
-    urb = 0
-vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-total_itm = espaco_livre + urb + vegetacao + itm + variabilidade_situacao
-total_epstein_peterson = espaco_livre + urb + vegetacao + epstein
-perdas.append((espaco_livre, urb, vegetacao, itm, variabilidade_situacao, epstein, total_itm, total_epstein_peterson))
+        if urban == 'wi' and h_urb > hg2 + 0.5:
+            urb = Modelos.ikegami_model(h_urb, hg2, f)
+        else:
+            urb = 0
+        vet_perdas[u]=itm
 
-print(perdas)
-print(
-    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
+        vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+        total_itm = espaco_livre + urb + vegetacao + itm + variabilidade_situacao
+        total_epstein_peterson = espaco_livre + urb + vegetacao + epstein
 
-er=15
-sigma=0.005
-polarizacao='v'
-Z0 = 376.62  # Ohms
-erlinha = er + ((Z0 * sigma / (800/47.7)) * 1j)
-if polarizacao == 'v':
-    Zg = ((erlinha - 1) ** 0.5) / erlinha
-else:
-    Zg = (erlinha - 1) ** 0.5
-print(Zg)
+#perdas.append((espaco_livre, urb, vegetacao, itm, variabilidade_situacao, epstein, total_itm, total_epstein_peterson))
+#print(    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
 
-print(h0)
+fig, ax1 = plt.subplots()
+ax1.plot(distancia, dem, label='Perfil do terreno', color="blue")
+ax1.set_xlabel('Distância (m)')
+ax1.set_ylabel('Elevação do terreno (m)', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
 
-plt.plot(distancia, dem)
-plt.title('Perfil do terreno entre o IME e PDC')
-plt.ylabel('Elevação do terreno (m)')
-plt.xlabel('Distância (m)')
+ax2 = ax1.twinx()
+
+
+ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
+ax2.set_ylabel('Perda em dB', color='red')
+ax2.tick_params(axis='y', labelcolor='red')
+
+plt.title('Perfil do terreno entre o IME e PDC e perda devido ao terreno')
+fig.tight_layout()
 plt.show()
-"""
