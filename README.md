@@ -1,33 +1,33 @@
-# Steganographer
-# Cap William e Ten Adrian
+# ComPlanner
 
 # Tema:
 
-Estegnografia de mensagem de texto em imagem. App em python.
+SOFTWARE DE PLANEJAMENTO DE MEIOS DE COMUNICAÇÕES COM BASE EM CARTAS DIGITALIZADAS DE UM AMBIENTE OPERACIONAL
 
 # Conceito:
 
-Esteganografia é uma técnica de ocultar a existência de uma mensagem dentro de uma outra mensagem, podendo ser feita dentro de textos, áudios ou imagens.  Existem diversas maneiras de aplicação dessa técnica, porém o que nós iremos propor será ocultar informação em imagens por meio da técnica de LSB ([Least Significant Bit](https://pt.wikipedia.org/w/index.php?title=Least_Significant_Bit&action=edit&redlink=1)
-),que consiste em alterar o bit menos significativo de uma cor de pixel e colocar o bit de cada caractere.
+Sofrware que calcula a preda devido ao terreno, à vegetação e à fatores urbanos com base no modelo ITM, Ikegami e recomendações ITU. O usuário interage com um mapa, onde ele adiciona marcadores e equpamentos rádio e o sofrware retorna a preda de enlace e a informação se será ou não possível a comunicaçõa entre os dois pontos marcados.
 
 # Função:
 
-Através de um dispositivo Android, selecionar uma Imagem armazenada internamente, alterar a imagem de forma a esconder uma mensagem de texto. E fazer a retirada da informação através da inserção de uma senha.
+Cálculo da atenuação rádio.
 
 # Motivação:
 
-: A motivação de desenvolver um aplicativo de esteganografia partiu da importância da segurança da informação dentro da engenharia eletrônica e de comunicações e da ampla aplicação que a técnica de esteganografia teria em atividades de operações militares que necessitam de sigilo. A motivação de ser um aplicativo Android ocorreu da necessidade de mobilidade para transmissão rápida da informação.
+: A motivação de desenvolver um aplicativo de esteganografia partiu da importância do conhecimento de aspectos relacionados a comunicações para tomada de decisão em operações militares.
 
 # Tutorial de execução do script:
   1- Instale o interpretador python e adicione python nas variáveis de ambiente. 
 
-  2- No ambiente com python instalado, instale a biblioteca wxPython:  "python -m pip install wxPython"
+  2- No ambiente com python instalado, instale a biblioteca Rasterio:  "python -m pip install rasterio"
     
   3- No ambiente com python instalado, instale a biblioteca Pillow com o comando: "python -m pip install pillow"
-
-  4- Baixe o programa e rode o arquivo Steganographer.py: estando no diretório dos arquivos baixados execute o comando “python Steganographer.py”
   
-Como mencionado acima, a biblioteca utilizada para interface gráfica é o wxPython.
+  4- No ambiente com python instalado, instale a biblioteca Flask:  "python -m pip install flask"
+
+  5- No ambiente com python instalado, instale a biblioteca Folium:  "python -m pip install folium"
+
+  6- Baixe o toda a pasta do projeto programa e rode o arquivo App2.py: Abra o navegador e acessa a máquina em que o software está rodando pelo seu endreço IP na porta 5000.
 
 # Tutorial de Uso:
 
