@@ -32,12 +32,15 @@ Cálculo da atenuação rádio.
 # Tutorial de Uso:
 
 
-A pagina inicial do app é demonstrada abaixo:
+A pagina inicial "Aba home"do app é demonstrada abaixo, nela o usuário pode visulizar os mapas, potos adicionos e camada de cobertura rádio:
+
 
 ![index](https://github.com/AdrianLCS/PlanCom/assets/114261968/6a4c2c03-113b-4422-bbed-cc1a9380c17c)
-Com app aberto, o usuário deve pode selecionar uma imagem clicando no botão "Selecionar Imagem", assim será aberto um seletor de arquivos para o usuário escolher a imagem.
 
-![Captura de tela_20221202_171008](https://user-images.githubusercontent.com/114261968/205382906-bc3e5fef-3c96-47da-ab00-ddaae626354a.png)
+A Figura abaixo mostra a aba "Add Ponto", onde é realizada a adição de marcadores no mapa. Nessa aba, o usuário pode adicionar um ponto que vai aparecer no mapa através de um marcador. O usuário entra com o nome que deseja dar ao ponto, as coordenadas e a altura da antena, e seleciona o equipamento rádio que será operado nesse ponto. Ao preencher os campos e clicar no botão "Adicionar Marcador", aparecerá um marcador no mapa nas referidas coordenadas. A Figura da aba home acima mostra dois marcadores referentes aos locais do IME e do PCD que foram adicionados
+
+![addpont](https://github.com/ProgramacaoAplicada2022/Adrian_Willian_Stegnographer/assets/114261968/c61e3f92-87f9-420d-b48d-02403a102ae4)
+
 
 Para ocultar uma mensagem na Imagem o usuário deverá prencehre o campo senha e Mensagem, em seguida clicar no botão "Ocultar Mensagem na Imagem".
 Ao clicar será gerada uma nova imagem no mesmo diretório da imagem selecionada, com o mesmo nome acrescido de "v2r" no formato PNG.
