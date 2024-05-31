@@ -852,8 +852,8 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
     espesura = 0
     if indice == 0:
-        contar0=0
-        rfresn3 = 0.6 * Modelos.raio_fresnel(1, distancia[-1]/2, distancia[-1]/2, f)
+        contar0 = 0
+        rfresn3 = 0.6 * Modelos.raio_fresnel(1, distancia[-1] / 2, distancia[-1] / 2, f)
         m = -(dem[0] + ht - dem[-1] - hr) / distancia[-1]
         c = (dem[0] + ht - dem[-1] - hr)
         x = np.array(distancia)
@@ -864,14 +864,14 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             y = m * x + c
             los = y - (dem - (dem[-1] + hr))
         for i in range(len(los) - 1):
-            if los[i]< ((rfresn3*(abs(len(los)-1)/2-i)*2/(len(los)-1))):
-                contar0=contar0+1
+            if los[i] < ((rfresn3 * (abs(len(los) - 1) / 2 - i) * 2 / (len(los) - 1))):
+                contar0 = contar0 + 1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        if (contar0>0) and (espesura>100):
-            espesura=espesura/2
+        if (contar0 > 0) and (espesura > 100):
+            espesura = espesura / 2
 
 
     else:
@@ -890,36 +890,36 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
         rfresn2 = 0.6 * Modelos.raio_fresnel(1, distancia[indice_d], distancia[-1] - distancia[indice_d], f)
         m2 = -(dem[0] + ht - dem[indice_d] - rfresn2) / distancia[indice_d]
         c2 = (dem[0] + ht - dem[indice_d] - rfresn2)
-        x2 = np.array(distancia[:indice_d+1])
+        x2 = np.array(distancia[:indice_d + 1])
         if c2 < 0:
             y2 = m2 * x2
-            los2 = y2 - (dem[:indice_d+1] - (dem[0]))
+            los2 = y2 - (dem[:indice_d + 1] - (dem[0]))
         else:
             y2 = m2 * x2 + c2
-            los2 = y2 - (dem[:indice_d+1] - (dem[indice_d]))
-        contar1=0
-        contar2=0
+            los2 = y2 - (dem[:indice_d + 1] - (dem[indice_d]))
+        contar1 = 0
+        contar2 = 0
         for i in range(len(los) - 1):
-            if los[i]< ((rfresn*(len(los)-i-1)/(len(los)-1))):
-                contar1=contar1+1
+            if los[i] < ((rfresn * (len(los) - i - 1) / (len(los) - 1))):
+                contar1 = contar1 + 1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
 
-        if (contar1>0) and (espesura>100):
-            espesura=espesura/2
+        if (contar1 > 0) and (espesura > 100):
+            espesura = espesura / 2
         ref = espesura
-        altur_da_cobertuta2 = abs(dsm[:indice_d+1] - dem[:indice_d+1])
+        altur_da_cobertuta2 = abs(dsm[:indice_d + 1] - dem[:indice_d + 1])
         for i in range(len(los2) - 2):
-            if los2[i]<((rfresn2*(len(los2)-i-2)/(len(los2)-2))):
-                contar2=contar2+1
+            if los2[i] < ((rfresn2 * (len(los2) - i - 2) / (len(los2) - 2))):
+                contar2 = contar2 + 1
 
             if los2[i] < altur_da_cobertuta2[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        if (contar2>0) and (espesura>100):
+        if (contar2 > 0) and (espesura > 100):
             espesura = ref + (espesura - ref) / 2
 
     """
@@ -941,7 +941,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
                         if landcover[3 * (i + indice_d) + n] == 10:
                             espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
     """
-    return 0.6*espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
+    return 0.6 * espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 cobertura = []
 """markers = [{'lat': 4.9987281, 'lon': 8.3248506, 'nome': 'IME', 'h': 1.5},
@@ -1120,19 +1120,20 @@ perdas=[]
 dem, dsm, landcover, distancia = perfil(p1, p2)
 Densidade_urbana = 0.7
 vet_perdas= np.zeros(len(dem))
+vet_h_urb=np.zeros(len(dem))
 for u in range(len(dem)):
     if u>1:
         d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
             dem[:u+1], dsm[:u+1],
             distancia[:u+1], hg1, hg2,
             Densidade_urbana)
-        if landcover[-1] == 50:
+        if landcover[:3*u+1][-1] == 50 and landcover[:3*u+1][-2] == 50:
             urban = 'wi'
         else:
             urban = 'n'
         yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
         qs = 5  # 70% das situacões
-        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hg2, hg1, distancia, indice_visada)
+        espesura = obter_vegeta_atravessada(f, indice_visada_r, dem[:u+1], landcover[:3*u+1], dsm[:u+1], hg2, hg1, distancia[:u+1], indice_visada)
         # colocar a cidicao para chamar itm ou urbano + espaco livre
 
         h0 = (dem[0] + dem[-1]) / 2
@@ -1143,7 +1144,8 @@ for u in range(len(dem)):
         espaco_livre = Modelos.friis_free_space_loss_db(f, d)
         itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                                                     teta1, teta2, polarizacao='v', simplificado=0)
-
+        vet_h_urb[u]=h_urb
+        h_urb=h_urb+0.5
         if urban == 'wi' and h_urb > hg2 + 0.5:
             urb = Modelos.ikegami_model(h_urb, hg2, f)
         else:
@@ -1153,12 +1155,18 @@ for u in range(len(dem)):
         vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
         total_itm = espaco_livre + urb + vegetacao + itm + variabilidade_situacao
         total_epstein_peterson = espaco_livre + urb + vegetacao + epstein
-
+        vet_perdas[u] = vegetacao+urb+itm+espaco_livre
 #perdas.append((espaco_livre, urb, vegetacao, itm, variabilidade_situacao, epstein, total_itm, total_epstein_peterson))
 #print(    f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada},{teta1}, {teta2}, {urban})')
 
+sperficie=np.array(dem)
+for i in range(len(dem)):
+    if landcover[3*i]==10: #and landcover[3*i-1]==10:
+        sperficie[i]=sperficie[i]+np.abs(np.array(dem)-np.array(dsm))[i]
+
 fig, ax1 = plt.subplots()
 ax1.plot(distancia, dem, label='Perfil do terreno', color="blue")
+#ax1.plot(distancia, sperficie, label='Perfil do terreno', color="green")
 ax1.set_xlabel('Distância (m)')
 ax1.set_ylabel('Elevação do terreno (m)', color='blue')
 ax1.tick_params(axis='y', labelcolor='blue')
@@ -1170,6 +1178,6 @@ ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
 ax2.set_ylabel('Perda em dB', color='red')
 ax2.tick_params(axis='y', labelcolor='red')
 
-plt.title('Perfil do terreno entre o IME e PDC e perda devido ao terreno')
+plt.title('Perfil do terreno entre o PDC e o IME e perda total')
 fig.tight_layout()
 plt.show()

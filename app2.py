@@ -931,8 +931,8 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return 0.6 * espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
-cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
-              'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
+cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': float(800),
+              'img': 'Raster\modificado\AS23W044.png', 'h': float(10)}]
 
 
 # cobertura = []
@@ -1160,7 +1160,7 @@ def ptp():
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
             h_urb = h_urb + 0.5
-            if (landcover[-1] == 50) or (landcover[-2] == 50) or (landcover[-3] == 50):
+            if (landcover[-1] == 50) and (landcover[-2] == 50):
                 urban = 'wi'
             else:
                 urban = 'n'
@@ -1229,7 +1229,7 @@ def area():
         img = criaimg(caminho)
         cobertura.append(
             {'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho,
-             'f': float(request.form.get("f")), 'img': img, 'h': ht})
+             'f': float(request.form.get("f")), 'img': img, 'h': float(ht)})
     return render_template('area.html')
 
 

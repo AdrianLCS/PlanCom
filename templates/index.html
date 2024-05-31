@@ -3,43 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seleção de Objetos</title>
-    <script>
-        function atualizarOpcoes() {
-            const nomeSelecionado = document.getElementById('selectObjetos').value;
-            fetch(`/get_opcoes/${nomeSelecionado}`)
-                .then(response => response.json())
-                .then(data => {
-                    const selectOpcoes = document.getElementById('selectOpcoes');
-                    selectOpcoes.innerHTML = '';
-
-                    if (data.length > 0) {
-                        data.forEach(opcao => {
-                            const option = document.createElement('option');
-                            option.value = opcao;
-                            option.text = opcao;
-                            selectOpcoes.appendChild(option);
-                        });
-                        selectOpcoes.style.display = 'block';
-                    } else {
-                        selectOpcoes.style.display = 'none';
-                    }
-                });
-        }
-    </script>
+    <title>User Environment</title>
 </head>
 <body>
-    <h1>Seleção de Objetos</h1>
-    <label for="selectObjetos">Selecione um objeto:</label>
-    <select id="selectObjetos" onchange="atualizarOpcoes()">
-        {% for obj in objetos %}
-            <option value="{{ obj.nome }}">{{ obj.nome }}</option>
-        {% endfor %}
-    </select>
+    <h1>Ambiente do Usuário</h1>
+    <p>Variable 1: {{ data.variable1 }}</p>
+    <p>Variable 2: {{ data.variable2 }}</p>
 
-    <br><br>
-
-    <label for="selectOpcoes" style="display: none;">Selecione uma opção:</label>
-    <select id="selectOpcoes" style="display: none;"></select>
+    <form action="{{ url_for('update') }}" method="POST">
+        <label for="variable1">Variable 1:</label>
+        <input type="text" id="variable1" name="variable1" value="{{ data.variable1 }}">
+        <br>
+        <label for="variable2">Variable 2:</label>
+        <input type="text" id="variable2" name="variable2" value="{{ data.variable2 }}">
+        <br>
+        <button type="submit">Update</button>
+    </form>
 </body>
 </html>
