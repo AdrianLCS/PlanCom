@@ -975,7 +975,13 @@ for i in range(len(pxs)):
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana)
     print(d)
-    h_urb = h_urb + 0.5
+    if h_urb > 7:
+        h_urb = 7.5
+    elif h_urb < 3:
+        h_urb = 3.5
+    else:
+        h_urb = h_urb + 0.5
+
     if (landcover[-1] == 50)or(landcover[-2] == 50):
         urban = 'wi'
     else:
@@ -1015,14 +1021,14 @@ for i in range(len(pxs)):
     perdas.append(itm+vegetacao+urb+variabilidade_situacao)
     perdas2.append(epstein+vegetacao+urb)
 
-    if (Dh>90) and (d<=0.7*dls_LR):
+    if (Dh>90):
         pd3=epstein + vegetacao + urb
         perdas3.append(pd3)
     else:
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("ohteste.txt", "a") as arquivo:
+    with open("ohteste7.txt", "a") as arquivo:
         arquivo.write("\n"+str(pxs[i][0])+","+str(pxs[i][1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 perdas = np.array(perdas)
