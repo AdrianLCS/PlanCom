@@ -56,7 +56,7 @@ class Radio():
         self.antenas=antenas
 
 #Criar opção de adiconar rádio
-radios = [Radio(-97, [30, 108], '7800V-HH',1,Pot(1,[1,5,10]),[Antena('wip',0,1),Antena('baster',0,1)]),Radio(-97, [800, 900], 'APX2000',1,Pot(0,[0,20]),[Antena('wip',0,1),Antena('baster',0,1)])]
+#radios = [Radio(-97, [30, 108], '7800V-HH',1,Pot(1,[1,5,10]),[Antena('wip',0,1),Antena('baster',0,1)]),Radio(-97, [800, 900], 'APX2000',1,Pot(0,[0,20]),[Antena('wip',0,1),Antena('baster',0,1)])]
 radio1={'nome':'7800V-HH','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':1,'valor':[1,5,10]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
 radio2={'nome':'APX2000','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':0,'valor':[0,43]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
 
@@ -1402,12 +1402,12 @@ def get_radio(nome):
         return redirect(url_for('login'))
 
     rad = session['radios']
-    for radio in rad:
-        if radio.nome == nome:
+    for ra in rad:
+        if ra['nome'] == nome:
             return jsonify({
-                'potencia_tipo': radio.potencia.tipo,
-                'potencia_valor': radio.potencia.valor,
-                'antenas': [antena.nome for antena in radio.antenas]
+                'potencia_tipo': ra['potencia']['tipo'],
+                'potencia_valor': ra['potencia']['valor'],
+                'antenas': [antena['nome'] for antena in ra['antenas']]
             })
     return jsonify({})
 
