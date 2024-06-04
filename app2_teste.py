@@ -60,7 +60,7 @@ radios = [Radio(-97, [30, 108], '7800V-HH',1,Pot(1,[1,5,10]),[Antena('wip',0,1),
 radio1={'nome':'7800V-HH','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':1,'valor':[1,5,10]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
 radio2={'nome':'APX2000','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':0,'valor':[0,43]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
 
-#radios=[radio1,radio2]
+radios=[radio1,radio2]
 def deg2rad(degrees):
     radians = degrees * np.pi / 180
     return radians
@@ -1152,7 +1152,7 @@ def create_user():
             session['cobertura'] = []
             session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 0.5}
             session['mapas'] = []
-            session['mapas'] = radios
+            session['radios'] = radios
             return redirect(url_for('home'))
         else:
             flash('Usuário já existe. Tente novamente.')
