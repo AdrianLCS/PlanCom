@@ -26,25 +26,32 @@
 
             <button>Calcular perda</button>
         </form>
-        <table>
+        <style>
+            table {
+                border-collapse: separate; /* Bordas separadas */
+                border-spacing: 10px; /* Define espaçamento entre células */
+            }
+        </style>
+        <table border="1">
             <tr>
                 <th>Ponto 1  </th>
                 <th>Ponto 2  </th>
                 <th>Frequência  </th>
                 <th>Espaço livre  </th>
                 <th>Perda Urbana  </th>
-                <th>Vegetação  </th>
+                <th >Vegetação  </th>
                 <th>Terreno  </th>
                 <th>Total (db)  </th>
             </tr>
-            {%for perda in perdas%}
+
             <tr>
-            {%for chave, valor in perda.items()%}
+            {%for chave, valor in perdas.items()%}
                 <td>{{valor}}</td>
             {% endfor %}
             </tr>
-            {% endfor %}
         </table>
+        <img src="{{ figura }}" alt="Imagem">
+
     </ol>
     </div>
 

@@ -3,21 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Environment</title>
+    <title>Imagem com Flask</title>
 </head>
 <body>
-    <h1>Ambiente do Usuário</h1>
-    <p>Variable 1: {{ data.variable1 }}</p>
-    <p>Variable 2: {{ data.variable2 }}</p>
-
-    <form action="{{ url_for('update') }}" method="POST">
-        <label for="variable1">Variable 1:</label>
-        <input type="text" id="variable1" name="variable1" value="{{ data.variable1 }}">
-        <br>
-        <label for="variable2">Variable 2:</label>
-        <input type="text" id="variable2" name="variable2" value="{{ data.variable2 }}">
-        <br>
-        <button type="submit">Update</button>
-    </form>
+    <h1>Exemplo de Imagem com Flask</h1>
+    <img src="{{ image_path }}" alt="Minha Imagem">
 </body>
 </html>

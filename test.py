@@ -953,14 +953,14 @@ markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0},
 
 
 #p1 = (markers[2]['lon'], markers[2]['lat'])
-p1 = (markers[1]['lon'], markers[1]['lat'])
-p2 = (markers[0]['lon'], markers[0]['lat'])
+p2 = (markers[1]['lon'], markers[1]['lat'])
+p1 = (markers[0]['lon'], markers[0]['lat'])
 print(obter_raster(p1,p1))
 f = float(800)
 ime = 1.5
-PDC = 10
-hg1 = PDC
-hg2 = ime
+PDC = 22.5
+hg1 = ime
+hg2 = PDC
 
 
 """def add_curvatura_ao_perfil(dem, d, lat):

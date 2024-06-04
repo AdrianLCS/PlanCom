@@ -1132,12 +1132,15 @@ def add_marker():
     return jsonify({'result': 'success'})
 
 
-perdas = []
+#
 
 
 @app.route('/ptp', methods=['GET', 'POST'])
 def ptp():
+    perdas = {}
     global markers
+    fig_name=''
+    figura=''
     ht, hr = 0, 0
     p1 = ()
     p2 = ()
@@ -1145,7 +1148,7 @@ def ptp():
 
         # calcular perda Aqui antes das operacoes abaixo
         if request.form.get("ponto1") and request.form.get("ponto2") and request.form.get("f"):
-
+            fig_name=str(request.form.get("ponto1"))+"_"+str(request.form.get("ponto2"))
             for i in markers:
                 if i['nome'] == request.form.get("ponto1"):
                     p1 = (i['lon'], i['lat'])
@@ -1190,22 +1193,84 @@ def ptp():
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-            if (Dh > 90) and (d <= 0.7 * dls_LR):
+            if (Dh > 90):
                 Perda_por_terreno = (epstein)
             else:
                 Perda_por_terreno = (itm + variabilidade_situacao)
             perda = Perda_por_terreno + vegetacao + urb + espaco_livre
 
-            perdas.append({'ponto1': request.form.get("ponto1"),
+            perdas={'ponto1': request.form.get("ponto1"),
                            'ponto2': request.form.get("ponto2"),
                            'f': f,
-                           'EspacoLivre': espaco_livre,
-                           'urb': urb,
-                           'veg ': vegetacao,
-                           'terreno': Perda_por_terreno,
-                           'perda': perda})
+                           'EspacoLivre': round(10*espaco_livre)/10,
+                           'urb': round(10*urb)/10,
+                           'veg ': round(10*vegetacao)/10,
+                           'terreno': round(10*Perda_por_terreno)/10,
+                           'perda': round(10*perda)/10}
 
-    return render_template('ptp.html', perdas=perdas, markers=markers)
+            vet_perdas = np.zeros(len(dem))
+            for u in range(len(dem)):
+                if u > 5:
+                    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
+                        dem[:u + 1], dsm[:u + 1],
+                        distancia[:u + 1], hg1, hg2,
+                        Densidade_urbana)
+                    if landcover[:3 * u + 1][-1] == 50 and landcover[:3 * u + 1][-2] == 50:
+                        urban = 'wi'
+                    else:
+                        urban = 'n'
+                    yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
+                    qs = 5  # 70% das situacões
+                    espesura = obter_vegeta_atravessada(f, indice_visada_r, dem[:u + 1], landcover[:3 * u + 1],
+                                                        dsm[:u + 1], hg2, hg1, distancia[:u + 1], indice_visada)
+                    # colocar a cidicao para chamar itm ou urbano + espaco livre
+
+                    h0 = (dem[0] + dem[-1]) / 2
+
+                    dls, hs = parametros_difracao(distancia[:u + 1], dem[:u + 1], hg1, hg2)
+
+                    epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
+                    espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+                    itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt,
+                                                                                      qs, dl1, dl2, Dh, visada,
+                                                                                      teta1, teta2, polarizacao='v',
+                                                                                      simplificado=0)
+                    if (Dh > 90):
+                        Perda_por_terreno = (epstein)
+                    else:
+                        Perda_por_terreno = (itm + variabilidade_situacao)
+
+                    h_urb = h_urb + 0.5
+                    if urban == 'wi' and h_urb > hg2 + 0.5:
+                        urb = Modelos.ikegami_model(h_urb, hg2, f)
+                    else:
+                        urb = 0
+                    vet_perdas[u] = itm
+                    vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+                    vet_perdas[u] = vegetacao + urb + Perda_por_terreno + espaco_livre
+
+
+            fig, ax1 = plt.subplots()
+            ax1.plot(distancia, dem, label='Perfil do terreno', color="blue")
+            # ax1.plot(distancia, sperficie, label='Perfil do terreno', color="green")
+            ax1.set_xlabel('Distância (m)')
+            ax1.set_ylabel('Elevação do terreno (m)', color='blue')
+            ax1.tick_params(axis='y', labelcolor='blue')
+
+            ax2 = ax1.twinx()
+
+            ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
+            ax2.set_ylabel('Perda em dB', color='red')
+            ax2.tick_params(axis='y', labelcolor='red')
+
+            titulo='Perfil do terreno ' + fig_name+ ', e perda total'
+            plt.title(titulo)
+            fig.tight_layout()
+            figura = "static/imagens/perfil_" + fig_name + ".jpg"
+            #fig.figure(figsize=(10, 5))
+            fig.savefig(figura, format="jpg")
+
+    return render_template('ptp.html', perdas=perdas, markers=markers, figura=figura)
 
 
 @app.route('/area', methods=['GET', 'POST'])
