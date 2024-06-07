@@ -1061,7 +1061,6 @@ for i in range(len(prs)):
                                                                                                               distancia,                                                                                                          hg1, hg2,
                                                                                                               Densidade_urbana,f)
     print(d)
-    h_urb=h_urb+0.5
     if (landcover[-1] == 50)or(landcover[-2] == 50):
         urban = 'wi'
     else:
@@ -1081,17 +1080,27 @@ for i in range(len(prs)):
 
     else:
         demsm=dem
-    dls, hs = parametros_difracao(distancia, dem, hg1, hg2,f)
+    dls, hs = parametros_difracao(distancia, dsm, hg1, hg2,f)
 
     epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
     espaco_livre = Modelos.friis_free_space_loss_db(f, d)
     itm, variabilidade_situacao, At, dls_LR = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt, qs, dl1, dl2, Dh, visada,
                                       teta1, teta2, polarizacao='v', simplificado=0)
 
-    if urban == 'wi' and h_urb > hg2 + 0.5:
-        urb = max(0, Modelos.ikegami_model(h_urb, hg2, f))
+    min_alt=Modelos.min_alt_ikegami(f)
+    if h_urb>3:
+        h_urb=3+min_alt
     else:
-        urb = 0
+        h_urb= h_urb+min_alt
+    if (urban == 'wi'):
+        if (h_urb > hg2 + min_alt):
+            urb = Modelos.ikegami_model(h_urb, hg2, f)
+        else:
+            h_urb = hg2 + min_alt
+            urb = Modelos.ikegami_model(h_urb, hg2, f)
+    else:
+        urb=0
+
     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
     rearth = Modelos.opcional_ar(f,h0,d, hg1, hg2)
     terreno = max(rearth, epstein)
@@ -1101,14 +1110,14 @@ for i in range(len(prs)):
     perdas.append(itm+vegetacao+urb+variabilidade_situacao)
     perdas2.append(epstein+vegetacao+urb)
 
-    if ((Dh>90) and (d<=0.7*dls_LR)):
+    if (((Dh>90) and (d<=0.7*dls_LR)))or (d < 2000):
         pd3=epstein + vegetacao + urb
         perdas3.append(pd3)
     else:
         pd3=itm+vegetacao+urb+variabilidade_situacao
         perdas3.append(pd3)
 
-    with open("mtteste6.txt", "a") as arquivo:
+    with open("mtteste.txt", "a") as arquivo:
         arquivo.write("\n"+str(p1[0])+","+str(p1[1])+","+str(prs[i][0])+","+str(prs[i][1])+","+str(d)+","+str(epstein)+","+str(itm+variabilidade_situacao)+","+str(vegetacao)+","+str(urb)+","+str(epstein+vegetacao+urb)+","+str(itm+vegetacao+urb+variabilidade_situacao)+","+str(pd3)+","+str(A503V[i]))
 
 

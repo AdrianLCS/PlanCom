@@ -998,13 +998,13 @@ def addfoliun():
     for i in cobertura:
         criamapa(i['raster'], i['img']).add_to(folium_map)
 
-    """medido=[]
+    medido=[]
     dadosmedido=[]
     dadositm = []
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\mtteste6.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\plteste8.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
@@ -1078,7 +1078,7 @@ def addfoliun():
     HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1, gradient=dicionario_cores).add_to(folium_map)
     HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1, gradient=dicionario_cores).add_to(folium_map)
     HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1, gradient=dicionario_cores).add_to(folium_map)
-    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)"""
+    HeatMap(data=erro2, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)
 
     folium_map.add_child(folium.LayerControl())
     return folium_map
@@ -1162,7 +1162,6 @@ def ptp():
             Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            h_urb = h_urb + 0.5
             if (landcover[-1] == 50) and (landcover[-2] == 50):
                 urban = 'wi'
             else:
@@ -1185,8 +1184,17 @@ def ptp():
                                                                                 Dh, visada,
                                                                                 teta1, teta2, polarizacao='v')
 
-            if urban == 'wi' and h_urb > hg2 + 0.5:
-                urb = Modelos.ikegami_model(h_urb, hg2, f)
+            min_alt = Modelos.min_alt_ikegami(f)
+            if h_urb > 3:
+                h_urb = 3 + min_alt
+            else:
+                h_urb = h_urb + min_alt
+            if (urban == 'wi'):
+                if (h_urb > hg2 + min_alt):
+                    urb = Modelos.ikegami_model(h_urb, hg2, f)
+                else:
+                    h_urb = hg2 + min_alt
+                    urb = Modelos.ikegami_model(h_urb, hg2, f)
             else:
                 urb = 0
 
@@ -1235,7 +1243,7 @@ def ptp():
                                                                                       qs, dl1, dl2, Dh, visada,
                                                                                       teta1, teta2, polarizacao='v',
                                                                                       simplificado=0)
-                    if (Dh > 90):
+                    if (((Dh>90) and (d<=0.7*dls_LR)))or (d < 2000):
                         Perda_por_terreno = (epstein)
                     else:
                         Perda_por_terreno = (itm + variabilidade_situacao)

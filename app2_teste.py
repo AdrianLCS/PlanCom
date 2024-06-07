@@ -1219,7 +1219,6 @@ def ptp():
             Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            h_urb = h_urb + 0.5
             if (landcover[-1] == 50) and (landcover[-2] == 50):
                 urban = 'wi'
             else:
@@ -1242,15 +1241,24 @@ def ptp():
                                                                                 Dh, visada,
                                                                                 teta1, teta2, polarizacao='v')
 
-            if urban == 'wi' and h_urb > hg2 + 0.5:
-                urb = Modelos.ikegami_model(h_urb, hg2, f)
+            min_alt = Modelos.min_alt_ikegami(f)
+            if h_urb > 3:
+                h_urb = 3 + min_alt
+            else:
+                h_urb = h_urb + min_alt
+            if (urban == 'wi'):
+                if (h_urb > hg2 + min_alt):
+                    urb = Modelos.ikegami_model(h_urb, hg2, f)
+                else:
+                    h_urb = hg2 + min_alt
+                    urb = Modelos.ikegami_model(h_urb, hg2, f)
             else:
                 urb = 0
 
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-            if (Dh > 90) and (d <= 0.7 * dls_LR):
+            if (((Dh>90) and (d<=0.7*dls_LR)))or (d < 2000):
                 Perda_por_terreno = (epstein)
             else:
                 Perda_por_terreno = (itm + variabilidade_situacao)
