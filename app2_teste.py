@@ -1242,8 +1242,8 @@ def ptp():
                                                                                 teta1, teta2, polarizacao='v')
 
             min_alt = Modelos.min_alt_ikegami(f)
-            if h_urb > 3:
-                h_urb = 3 + min_alt
+            if h_urb > 7:
+                h_urb = 7 + min_alt
             else:
                 h_urb = h_urb + min_alt
             if (urban == 'wi'):
