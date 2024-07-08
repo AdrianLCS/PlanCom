@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+
+<body>
+    <div id="Salv" style="height: 15%;">
+        <h2 style="text-align: center;">Salvar projeto</h2>
+    <ol>
+        <form action="{{url_for('salv')}}" method="post">
+            <label for="nsalv">Nome do Projeto</label>
+            <input type="text" id="nsalv" name="nsalv" required>
+            <button>Salvar</button>
+        </form>
+    </ol>
+    </div>
+    <div id="carrega">
+        <h2 style="text-align: center;">Carregar projeto</h2>
+    <ol>
+        <form action="{{url_for('carr')}}" method="post">
+            <label for="nCarr">Nome do Projeto</label>
+            <input type="text" id="ncarr" name="ncarr" required>
+            <button>Carregar</button>
+        </form>
+    </ol>
+    </div>
+
+</body>
+{% endblock conteudo%}

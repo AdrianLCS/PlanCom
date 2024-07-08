@@ -3,9 +3,9 @@ import rasterio
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify, flash
 import os
 import folium
+import pickle
 from folium.plugins import HeatMap
 import branca.colormap
-# import ee
 import matplotlib.pyplot as plt
 import Modelos
 from PIL import Image
@@ -27,7 +27,7 @@ c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 
-Configuracao = {"urb": 1, "veg": 1, "precisao": 0.5}  # ITM ou Epstein-peterson
+Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}  # ITM ou Epstein-peterson
 mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
           'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
 
@@ -41,17 +41,6 @@ radios=[radio1,radio2]
 def deg2rad(degrees):
     radians = degrees * np.pi / 180
     return radians
-
-
-"""def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
-    theta = longitude1 - longitude2
-
-    distance = R((latitude1+latitude2)/2) * np.arccos(
-            (np.sin(deg2rad(latitude1)) * np.sin(deg2rad(latitude2))) +
-            (np.cos(deg2rad(latitude1)) * np.cos(deg2rad(latitude2)) * np.cos(deg2rad(theta)))
-            )
-    return distance
-"""
 
 
 def getDistanceBetweenPointsNew(latitude1, longitude1, latitude2, longitude2):
@@ -100,7 +89,6 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
         dsm0[i] = dsm
         # landcover0.append(landcover)
         landcover0[i] = landcover
-    print('criou as retas')
     return retas, d, dem0, dsm0, landcover0, distancia0
 
 
@@ -1097,7 +1085,7 @@ def login():
                 session['perdas'] = []
                 session['cobertura'] = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
               'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
-                session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 0.5}
+                session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
                 session['mapas'] = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
           'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
                 session['radios']=radios
@@ -1127,7 +1115,7 @@ def create_user():
             session['markers'] = []
             session['perdas'] = {}
             session['cobertura'] = []
-            session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 0.5}
+            session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
             session['mapas'] = []
             session['radios'] = radios
             return redirect(url_for('home'))
@@ -1314,7 +1302,7 @@ def conf():
 
     if request.method == 'POST':
         Configuracao = {"urb": request.form.get("urb"), "veg": request.form.get("veg"),
-                        "precisao": request.form.get("precisao")}
+                        "precisao": request.form.get("precisao"), "largura_da_rua": request.form.get("larg"), "alt_max": request.form.get("alt") }
         session['Configuracao'] = Configuracao
 
     return render_template('conf.html')
@@ -1395,6 +1383,52 @@ def get_radio(nome):
                 'antenas': [antena['nome'] for antena in ra['antenas']]
             })
     return jsonify({})
+
+
+@app.route('/projetos', methods=['GET', 'POST'])
+def projetos():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('projetos.html')
+
+@app.route('/salv', methods=['GET', 'POST'])
+def salv():
+    if request.form.get("nsalv"):
+        arquiv = str(request.form.get("nsalv"))
+        arquiv = arquiv+".pkl"
+        markers = session['markers']
+        perdas = session['perdas']
+        cobertura = session['cobertura']
+        Configuracao = session['Configuracao']
+        mapas = session['mapas']
+        radios = session['radios']
+
+        with open(arquiv, 'wb') as arquivo:
+            # Salvar as variáveis no arquivo
+            pickle.dump(markers, arquivo)
+            pickle.dump(perdas, arquivo)
+            pickle.dump(cobertura, arquivo)
+            pickle.dump(Configuracao, arquivo)
+            pickle.dump(mapas, arquivo)
+            pickle.dump(radios, arquivo)
+
+    return redirect(url_for('projetos'))
+
+@app.route('/carr', methods=['GET', 'POST'])
+def carr():
+    if request.form.get("ncarr"):
+        arquiv = str(request.form.get("ncarr"))
+        arquiv = arquiv+".pkl"
+        with open(arquiv, 'rb') as arquivo:
+            # Carregar as variáveis do arquivo
+            session['markers'] = pickle.load(arquivo)
+            session['perdas'] = pickle.load(arquivo)
+            session['cobertura'] = pickle.load(arquivo)
+            session['Configuracao'] = pickle.load(arquivo)
+            session['mapas'] = pickle.load(arquivo)
+            session['radios'] = pickle.load(arquivo)
+
+    return redirect(url_for('index_map'))
 
 
 if __name__ == '__main__':

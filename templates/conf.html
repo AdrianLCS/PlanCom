@@ -6,17 +6,20 @@
         <h2 style="text-align: center;">Parametros de Configuracao</h2>
     <ol>
         <form action="{{url_for('conf')}}" method="post">
-            <label for="urb">calculo da perda urbana</label>
+            <label for="urb">calcular perda urbana?</label>
             <input type="text" id="urb" name="urb" required>
 
-            <label for="veg">cálculo da perda em vegetação</label>
+            <label for="veg">cálcular perda em vegetação?</label>
             <input type="text" id="veg" name="veg" required>
 
-            <label for="precisao">Precisao de predição de área</label>
+            <label for="precisao">Precisao azimultal de predição de área em graus</label>
             <input type="text" id="precisao" name="precisao" required>
 
-            <label for="precisao">Largura da rua</label>
-            <input type="text" id="rua" name="rua" required>
+            <label for="larg">Largura média da rua em área urbana</label>
+            <input type="text" id="larg" name="larg" required>
+
+            <label for="alt">Altura máxima das construções em área urbana</label>
+            <input type="text" id="alt" name="alt" required>
 
             <button>Setar configuração</button>
         </form>
