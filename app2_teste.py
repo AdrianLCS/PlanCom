@@ -19,9 +19,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 app.secret_key = 'supersecretkey'  # Chave secreta para criptografar sessões
 
-
 users = {'adrian': 'adrian', 'user2': 'password2'}
-
 
 c = 299792458  # m/s
 a = 6378137  # m
@@ -31,13 +29,101 @@ Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_
 mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
           'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
 
-
 # mapas=[]
 
-#Criar opção de adiconar rádio
-radio1={'nome':'7800V-HH','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':1,'valor':[1,5,10]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
-radio2={'nome':'APX2000','sensibilidade':-97,'faixa_de_freq':[30, 108],'potencia':{'tipo':0,'valor':[0,43]},'antenas':[{'nome':'wip','tiopo':0,'ganho':1},{'nome':'bade','tiopo':0,'ganho':1}]}
-radios=[radio1,radio2]
+# Criar opção de adiconar rádio
+radio1 = {'nome': '7800V-HH', 'sensibilidade': -97, 'faixa_de_freq': [30, 108],
+          'potencia': {'tipo': 1, 'valor': [1, 5, 10]},
+          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
+radio2 = {'nome': 'APX2000', 'sensibilidade': -97, 'faixa_de_freq': [30, 108],
+          'potencia': {'tipo': 0, 'valor': [0, 43]},
+          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
+radios = [radio1, radio2]
+
+
+def generate_raster_files(base_string):
+    import re
+
+    # Extrair a coordenada base da string
+    match = re.search(r'([NS])(\d{2})([EW])(\d{3})', base_string)
+    if not match:
+        raise ValueError("String de entrada não está no formato esperado.")
+
+    base_lat_dir = match.group(1)
+    base_lat = int(match.group(2))
+    base_lon_dir = match.group(3)
+    base_lon = int(match.group(4))
+
+    # Converter direções N/S e E/W para 1 ou -1
+    lat_sign = 1 if base_lat_dir == 'N' else -1
+    lon_sign = 1 if base_lon_dir == 'E' else -1
+
+    # Função auxiliar para gerar a direção correta
+    def get_lat_dir(lat):
+        return 'N' if lat >= 0 else 'S'
+
+    def get_lon_dir(lon):
+        return 'E' if lon >= 0 else 'W'
+
+    # Gerar a lista de arquivos raster na ordem especificada
+    raster_files = []
+    for lat_offset in range(-1, 2):
+        for lon_offset in range(-1, 2):
+            lat = base_lat + lat_offset
+            lon = base_lon + lon_offset
+            lat_dir = get_lat_dir(lat_sign * lat)
+            lon_dir = get_lon_dir(lon_sign * lon)
+            lat = abs(lat)
+            lon = abs(lon)
+            raster_files.append(f"Raster\\{lat_dir}{lat:02d}{lon_dir}{lon:03d}.tif")
+
+    return raster_files
+
+
+def unir_raster_3x3(raster_path):
+    raster_files = raster_files = generate_raster_files(raster_path)
+
+    # Nome do arquivo de saída
+    output_raster = raster_path[:-4] + "_3x3.tif"
+
+    # Número de rasters ao longo de uma linha ou coluna
+    num_rasters_row_col = 3
+
+    # Abrir os nove rasters
+
+    with rasterio.open(raster_files[0]) as src0, rasterio.open(raster_files[1]) as src1, rasterio.open(
+            raster_files[2]) as src2, \
+            rasterio.open(raster_files[3]) as src3, rasterio.open(raster_files[4]) as src4, rasterio.open(
+        raster_files[5]) as src5, \
+            rasterio.open(raster_files[6]) as src6, rasterio.open(raster_files[7]) as src7, rasterio.open(
+        raster_files[8]) as src8:
+        srcs = []
+        srcs.append(src0), srcs.append(src1), srcs.append(src2), srcs.append(src3), srcs.append(src4)
+        srcs.append(src5), srcs.append(src6), srcs.append(src7), srcs.append(src8)
+        # Obter informações sobre um dos rasters (usaremos o primeiro como referência)
+        profile = srcs[0].profile
+        transform = srcs[0].transform
+
+        # Criar um array 2D para armazenar os dados combinados
+        combined_data = np.zeros((srcs[0].height * num_rasters_row_col, srcs[0].width * num_rasters_row_col),
+                                 dtype=np.float32)
+
+        # Inserir os dados de cada raster na posição apropriada no array combinado
+        for i in range(num_rasters_row_col):
+            for j in range(num_rasters_row_col):
+                src = srcs[i * num_rasters_row_col + j]
+                data = src.read(1)
+                combined_data[i * src.height:(i + 1) * src.height, j * src.width:(j + 1) * src.width] = data
+
+    # Atualizar as informações do perfil do raster
+    profile.update(count=1, width=combined_data.shape[1], height=combined_data.shape[0], transform=transform)
+
+    # Salvar o raster combinado
+    with rasterio.open(output_raster, 'w', **profile) as dst:
+        dst.write(combined_data, 1)
+    return output_raster
+
+
 def deg2rad(degrees):
     radians = degrees * np.pi / 180
     return radians
@@ -135,7 +221,7 @@ def parametros_difracao(distancia, dem, ht, hr):
     return dls, hs
 
 
-def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao):
+def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao, largura_da_rua):
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
     yt = 1
@@ -147,11 +233,23 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
         inv_transform = ~src.transform
         transform = src.transform
         x, y = inv_transform * (ponto[0], ponto[1])
+
+    unidade_distancia = 2 * np.pi * R(ponto[1]) / (360 * (1 / transform[0]))
+    retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
+                                                                       precisao)
+    xy = min(x, 3600 - x, y, 3600 - y)
+    if xy * unidade_distancia <= raio:
+        raster_unido = unir_raster_3x3(raster_path)
+        raster_path = raster_unido
+
+    with rasterio.open(raster_path, 'r+') as src:
+        # Ler a matriz de dados do raster
+        data = src.read(1)
+        inv_transform = ~src.transform
+        transform = src.transform
+        x, y = inv_transform * (ponto[0], ponto[1])
         global Configuracao
 
-        unidade_distancia = 2 * np.pi * R(ponto[1]) / (360 * (1 / transform[0]))
-        retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
-                                                                           precisao)
         # Abrir o arquivo raster para leitura e escrita
 
         # Modificar o valor do ponto desejado
@@ -181,7 +279,13 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     Densidade_urbana = 0.7
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
-                    h_urb = h_urb + 0.5
+
+                    min_alt = Modelos.min_alt_ikegami(f)
+                    if h_urb > float(Configuracao["alt_max"]):
+                        h_urb = float(Configuracao["alt_max"]) + min_alt
+                    else:
+                        h_urb = h_urb + min_alt
+
                     hmed = (dem[0] + dem[-1]) / 2
 
                     if visada:
@@ -189,13 +293,14 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     else:
 
                         if Configuracao["urb"]:
-                            if ((landcover[-1] == 50) or (landcover[-2] == 50) or (landcover[-3] == 50)) and (
-                                    h_urb > hg2 + 0.5):
-                                urb = Modelos.ikegami_model(h_urb, hg2, f)
+                            if ((landcover[-1] == 50) or (landcover[-2] == 50)) and (
+                                    h_urb > hg2 + min_alt):
+                                urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(largura_da_rua))
                             else:
                                 urb = 0
                         else:
                             urb = 0
+
                         if Configuracao["veg"]:
                             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht,
                                                                 distancia,
@@ -1058,9 +1163,10 @@ def addfoliun():
     return folium_map
 
 
-markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'}]
+markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0, 'ant': 'wip'},
+           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0, 'ant': 'wip'},
+           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,
+            'ant': 'wip'}]
 
 
 @app.route('/')
@@ -1079,21 +1185,29 @@ def login():
         if username in users:
             if users[username] == password:
                 session['username'] = username
-                session['markers'] = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,'ant':'wip'}]
+                session['markers'] = [
+                    {'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0,
+                     'ant': 'wip'},
+                    {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0,
+                     'ant': 'wip'},
+                    {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,
+                     'ant': 'wip'}]
                 session['perdas'] = []
-                session['cobertura'] = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
-              'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
+                session['cobertura'] = [
+                    {'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
+                     'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
                 session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
-                session['mapas'] = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
-          'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
-                session['radios']=radios
+                session['mapas'] = [
+                    ['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
+                     'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
+                session['radios'] = radios
                 return redirect(url_for('home'))
             else:
                 flash('Senha incorreta. Tente novamente.')
         else:
             return redirect(url_for('create_user', username=username))
+        global Configuracao
+        Configuracao=session['Configuracao']
     return render_template('login.html')
 
 
@@ -1155,7 +1269,7 @@ def index_map():
 def addponto():
     if 'username' not in session:
         return redirect(url_for('login'))
-    rad=session['radios']
+    rad = session['radios']
     return render_template('addponto.html', radios=rad)
 
 
@@ -1185,7 +1299,10 @@ def ptp():
         return redirect(url_for('login'))
 
     markers = session['markers']
+    Configuracao = session['Configuracao']
     perdas = {}
+    fig_name = ''
+    figura = ''
     ht, hr = 0, 0
     p1 = ()
     p2 = ()
@@ -1193,7 +1310,7 @@ def ptp():
 
         # calcular perda Aqui antes das operacoes abaixo
         if request.form.get("ponto1") and request.form.get("ponto2") and request.form.get("f"):
-
+            fig_name = str(request.form.get("ponto1")) + "_" + str(request.form.get("ponto2"))
             for i in markers:
                 if i['nome'] == request.form.get("ponto1"):
                     p1 = (i['lon'], i['lat'])
@@ -1230,13 +1347,13 @@ def ptp():
                                                                                 teta1, teta2, polarizacao='v')
 
             min_alt = Modelos.min_alt_ikegami(f)
-            if h_urb > 7:
-                h_urb = 7 + min_alt
+            if h_urb > float(Configuracao["alt_max"]):
+                h_urb = float(Configuracao["alt_max"]) + min_alt
             else:
                 h_urb = h_urb + min_alt
             if (urban == 'wi'):
                 if (h_urb > hg2 + min_alt):
-                    urb = Modelos.ikegami_model(h_urb, hg2, f)
+                    urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(Configuracao["largura_da_rua"]))
                 else:
                     h_urb = hg2 + min_alt
                     urb = Modelos.ikegami_model(h_urb, hg2, f)
@@ -1246,29 +1363,90 @@ def ptp():
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
-            if (((Dh>90) and (d<=0.7*dls_LR)))or (d < 2000):
+            if (Dh > 90):
                 Perda_por_terreno = (epstein)
             else:
                 Perda_por_terreno = (itm + variabilidade_situacao)
             perda = Perda_por_terreno + vegetacao + urb + espaco_livre
 
-            perdas={'ponto1': request.form.get("ponto1"),
-                           'ponto2': request.form.get("ponto2"),
-                           'f': f,
-                           'EspacoLivre': espaco_livre,
-                           'urb': urb,
-                           'veg ': vegetacao,
-                           'terreno': Perda_por_terreno,
-                           'perda': perda}
+            perdas = {'ponto1': request.form.get("ponto1"),
+                      'ponto2': request.form.get("ponto2"),
+                      'f': f,
+                      'EspacoLivre': round(10 * espaco_livre) / 10,
+                      'urb': round(10 * urb) / 10,
+                      'veg ': round(10 * vegetacao) / 10,
+                      'terreno': round(10 * Perda_por_terreno) / 10,
+                      'perda': round(10 * perda) / 10}
 
-    return render_template('ptp.html', perdas=perdas, markers=markers)
+            vet_perdas = np.zeros(len(dem))
+            for u in range(len(dem)):
+                if u > 5:
+                    d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
+                        dem[:u + 1], dsm[:u + 1],
+                        distancia[:u + 1], hg1, hg2,
+                        Densidade_urbana)
+                    if landcover[:3 * u + 1][-1] == 50 and landcover[:3 * u + 1][-2] == 50:
+                        urban = 'wi'
+                    else:
+                        urban = 'n'
+                    yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
+                    qs = 5  # 70% das situacões
+                    espesura = obter_vegeta_atravessada(f, indice_visada_r, dem[:u + 1], landcover[:3 * u + 1],
+                                                        dsm[:u + 1], hg2, hg1, distancia[:u + 1], indice_visada)
+                    # colocar a cidicao para chamar itm ou urbano + espaco livre
+
+                    h0 = (dem[0] + dem[-1]) / 2
+
+                    dls, hs = parametros_difracao(distancia[:u + 1], dem[:u + 1], hg1, hg2)
+
+                    epstein = Modelos.modelo_epstein_peterson(dls, hs, f)
+                    espaco_livre = Modelos.friis_free_space_loss_db(f, d)
+                    itm, variabilidade_situacao, At, dLss = Modelos.longLq_rice_model(h0, f, hg1, hg2, he1, he2, d, yt,
+                                                                                      qs, dl1, dl2, Dh, visada,
+                                                                                      teta1, teta2, polarizacao='v',
+                                                                                      simplificado=0)
+                    if (((Dh > 90) and (d <= 0.7 * dls_LR))) or (d < 2000):
+                        Perda_por_terreno = (epstein)
+                    else:
+                        Perda_por_terreno = (itm + variabilidade_situacao)
+
+                    h_urb = h_urb + 0.5
+                    if urban == 'wi' and h_urb > hg2 + 0.5:
+                        urb = Modelos.ikegami_model(h_urb, hg2, f)
+                    else:
+                        urb = 0
+                    vet_perdas[u] = itm
+                    vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+                    vet_perdas[u] = vegetacao + urb + Perda_por_terreno + espaco_livre
+
+            fig, ax1 = plt.subplots()
+            ax1.plot(distancia, dem, label='Perfil do terreno', color="blue")
+            # ax1.plot(distancia, sperficie, label='Perfil do terreno', color="green")
+            ax1.set_xlabel('Distância (m)')
+            ax1.set_ylabel('Elevação do terreno (m)', color='blue')
+            ax1.tick_params(axis='y', labelcolor='blue')
+
+            ax2 = ax1.twinx()
+
+            ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
+            ax2.set_ylabel('Perda em dB', color='red')
+            ax2.tick_params(axis='y', labelcolor='red')
+
+            titulo = 'Perfil do terreno ' + fig_name + ', e perda total'
+            plt.title(titulo)
+            fig.tight_layout()
+            figura = "static/imagens/perfil_" + fig_name + ".jpg"
+            # fig.figure(figsize=(10, 5))
+            fig.savefig(figura, format="jpg")
+
+    return render_template('ptp.html', perdas=perdas, markers=markers, figura=figura)
 
 
 @app.route('/area', methods=['GET', 'POST'])
 def area():
     if 'username' not in session:
         return redirect(url_for('login'))
-
+    Configuracao = session['Configuracao']
     cobertura = session['cobertura']
     markers = session['markers']
     p1 = ()
@@ -1282,9 +1460,11 @@ def area():
                 ht = i['h']
         hr = 2
         caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
-        precisao = 0.5  # precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
+        precisao = 1 / float(Configuracao[
+                                 'precisao'])  # 0.5  # precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
+        largura_da_rua = Configuracao["largura_da_rua"]
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr,
-                                            float(request.form.get("f")), precisao)
+                                            float(request.form.get("f")), precisao, largura_da_rua)
 
         img = criaimg(caminho)
         cobertura.append(
@@ -1301,8 +1481,9 @@ def conf():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        Configuracao = {"urb": request.form.get("urb"), "veg": request.form.get("veg"),
-                        "precisao": request.form.get("precisao"), "largura_da_rua": request.form.get("larg"), "alt_max": request.form.get("alt") }
+        Configuracao = {"urb": int(request.form.get("urb")), "veg": int(request.form.get("veg")),
+                        "precisao": float(request.form.get("precisao")), "largura_da_rua": float(request.form.get("larg")),
+                        "alt_max": float(request.form.get("alt"))}
         session['Configuracao'] = Configuracao
 
     return render_template('conf.html')
@@ -1391,11 +1572,12 @@ def projetos():
         return redirect(url_for('login'))
     return render_template('projetos.html')
 
+
 @app.route('/salv', methods=['GET', 'POST'])
 def salv():
     if request.form.get("nsalv"):
-        arquiv = str(request.form.get("nsalv"))
-        arquiv = arquiv+".pkl"
+        arquiv = "planejamentos\\" + str(request.form.get("nsalv"))
+        arquiv = arquiv + ".pkl"
         markers = session['markers']
         perdas = session['perdas']
         cobertura = session['cobertura']
@@ -1414,11 +1596,12 @@ def salv():
 
     return redirect(url_for('projetos'))
 
+
 @app.route('/carr', methods=['GET', 'POST'])
 def carr():
     if request.form.get("ncarr"):
-        arquiv = str(request.form.get("ncarr"))
-        arquiv = arquiv+".pkl"
+        arquiv = "planejamentos\\" + str(request.form.get("ncarr"))
+        arquiv = arquiv + ".pkl"
         with open(arquiv, 'rb') as arquivo:
             # Carregar as variáveis do arquivo
             session['markers'] = pickle.load(arquivo)
