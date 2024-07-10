@@ -4,32 +4,22 @@ from flask import Flask, render_template, redirect, url_for, request, session, j
 import os
 import folium
 import pickle
-from folium.plugins import HeatMap
-import branca.colormap
 import matplotlib.pyplot as plt
 import Modelos
 from PIL import Image
 
-# no marcador definir o radio. radio sera um objeto que contém potencia ganho da antena limear de recepcao
-
+# Váriaves Globais
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'tif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 app.secret_key = 'supersecretkey'  # Chave secreta para criptografar sessões
-
 users = {'adrian': 'adrian', 'user2': 'password2'}
-
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
+Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
 
-Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}  # ITM ou Epstein-peterson
-mapas = [['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
-          'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
-
-# mapas=[]
 
 # Criar opção de adiconar rádio
 radio1 = {'nome': '7800V-HH', 'sensibilidade': -97, 'faixa_de_freq': [30, 108],
@@ -159,10 +149,8 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
     # L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
     d = 10 ** ((limear / 20) + np.log10(comprimento_de_onda) - 1.1)
     d = min(raio, d)
-    print(d)
     qtd_pontos = int(np.ceil(d / unidade_distancia))
     qtd_retas = int(360 * precisao)
-    print(qtd_pontos)
     retas = []
     # dem0, dsm0, landcover0, distancia0 = [], [], [], []
     dem0, dsm0, landcover0, distancia0 = np.zeros((qtd_retas, qtd_pontos)), np.zeros((qtd_retas, qtd_pontos)), np.zeros(
@@ -172,7 +160,6 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
             i * 2 * np.pi / qtd_retas)])  # roda no sentido positivo trigonométrio de 2 em 2 graus
         pf = np.array(ponto) + vet * (
                 d / unidade_distancia) * (1 / 3600)
-        print(pf)
         dem, dsm, landcover, distancia, r = perfil(ponto, pf, 1)
         # distancia0.append(distancia)
         distancia0[i] = distancia
@@ -409,7 +396,7 @@ def carregamapa(caminho_completo, filename):
     return image_overlay
 
 
-def criamapa(dem_file, img_file):
+def criamapa(dem_file, img_file, local_cobertura):
     """Essa função forma a camada de visualização da área de cobertura sobre o mapa em função de uma imagem e um
     raster para referências das coordenadas geográficas """
     # Carregar o arquivo DEM (tif)
@@ -422,7 +409,7 @@ def criamapa(dem_file, img_file):
 
     # Calcular o centro do DEM para definir o local inicial do mapa
     nome = '0'
-    for i in cobertura:
+    for i in local_cobertura:
         if i['img'] == img_file:
             nome = i['nome']
 
@@ -464,11 +451,9 @@ def R(lat):
 
 
 def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
-    """essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos dentro
+    """Essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos dentro
     de um mesmo arquivo Raster. """
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
-    print(r[indice_atual])
-    print(caminho)
     global Configuracao
     if (Configuracao["urb"] or Configuracao["veg"]) or not area:
         with rasterio.open(caminho) as src:
@@ -599,12 +584,13 @@ def perfil(p1, p2, area=0):
 
 
 def raio_fresnel(n, d1, d2, f):
+    """Função que calcula o raio da zona de Fresnel"""
     # f em hertz
     return (n * (c / f) * d1 * d2 / (d1 + d2)) ** 0.5
 
 
 def obter_raster(ponto1, ponto2):  # (lon, lat)
-
+    """Retorna o caminho do arquivo Raster que contém as coordenadas dos pontos dados"""
     if ponto1[0] < 0:
         lon1 = str(int(np.ceil(-ponto1[0])))
         we1 = 'W'
@@ -713,6 +699,7 @@ def obter_raster(ponto1, ponto2):  # (lon, lat)
 
 
 def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
+    """Calculo ao ajuste linear de um perfil para obtençãio de Denta h e he1 e he2 parâmetreo do modelo ITM"""
     xa = int(min(15 * hg1, 0.1 * dl1) / distancia[1])
     xb = len(elevacao) - 1 - int(min(15 * hg2, 0.1 * dl2) / distancia[1])
     zorig = elevacao[xa:xb + 1]
@@ -768,6 +755,7 @@ def ajuste(elevacao, distancia, hg1, hg2, dl1, dl2):
 
 
 def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
+    """A patrir de um perfil de terreno obtém os parametros do modelo ITM"""
     angulo = []
     angulor = []
     demr = dem[::-1]
@@ -812,6 +800,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
 
 
 def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, indice_d):
+    """A partrir dos perfis obtém espessura da vegetação penetrada pelo sinal rádio"""
     dem = np.array(dem)
     dsm = np.array(dsm)
 
@@ -891,25 +880,9 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     return 0.6 * espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
-cobertura = [{'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
-              'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
-
-
-# cobertura = []
-
-
-def addfoliun():
-    global Configuracao
-    escala_de_altura = [0, 100]
-
-    # ['00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000']
-    image_viz_params = {'bands': ['elevation'], 'min': escala_de_altura[0], 'max': escala_de_altura[1],
-                        'palette': ['0000ff', '00ffff', 'ffff00', 'ff0000', 'ffffff'],
-                        'opacity': 0.5}  # Altura limitada par visualização BR
-
-    # map_elevn = geemap.Map(center=[-22.9120, -43.2089], zoom=10)
-    # map_elevn.add_layer(elvn, image_viz_params, 'Elevacao')
-
+def addfoliun(local_mapas, local_cobertura):
+    """Essa função utiliza a bibliotega Foliun para criar o mapa e as camadas de visualização na tela principal do
+    software """
     folium_map = folium.Map(location=[-22.9120, -43.2089], zoom_start=7)
     try:
 
@@ -935,21 +908,17 @@ def addfoliun():
     except:
         print("erro ao tentar acessar a internet")
 
-    for i in mapas:
+    for i in local_mapas:
         carregamapa(i[0], i[1]).add_to(folium_map)
 
-    for i in cobertura:
-        criamapa(i['raster'], i['img']).add_to(folium_map)
+    for i in local_cobertura:
+        criamapa(i['raster'], i['img'], local_cobertura).add_to(folium_map)
 
     folium_map.add_child(folium.LayerControl())
     return folium_map
 
 
-markers = [{'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0, 'ant': 'wip'},
-           {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0, 'ant': 'wip'},
-           {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,
-            'ant': 'wip'}]
-
+# As funções abaixo usam a biblioteca Flask para gerar os Templates
 
 @app.route('/')
 def index():
@@ -961,35 +930,24 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     global radios
+    global Configuracao
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         if username in users:
             if users[username] == password:
                 session['username'] = username
-                session['markers'] = [
-                    {'lat': -22.9555, 'lon': -43.1661, 'nome': 'IME', 'h': 2.0, 'radio': "rf7800v", "pot": 5.0,
-                     'ant': 'wip'},
-                    {'lat': -22.9036, 'lon': -43.1895, 'nome': 'PDC', 'h': 22.5, 'radio': "rf7800v", "pot": 5.0,
-                     'ant': 'wip'},
-                    {'lat': 4.991688749, 'lon': 8.320198953, 'nome': 'mtx', 'h': 4, 'radio': "rf7800v", "pot": 5.0,
-                     'ant': 'wip'}]
+                session['markers'] = []
                 session['perdas'] = []
-                session['cobertura'] = [
-                    {'nome': 'PDC_Area_de_cobertura_800Mhz', 'raster': 'raster\S23W044.tif', 'f': 800,
-                     'img': 'Raster\modificado\AS23W044.png', 'h': 10}]
-                session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
-                session['mapas'] = [
-                    ['uploads\\SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000.tif',
-                     'SCN_Carta_Topografica_Matricial-BAÍADEGUANABARA-SF-23-Z-B-IV-4-SO-25.000']]
+                session['cobertura'] = []
+                session['Configuracao'] = Configuracao
+                session['mapas'] = []
                 session['radios'] = radios
                 return redirect(url_for('home'))
             else:
                 flash('Senha incorreta. Tente novamente.')
         else:
             return redirect(url_for('create_user', username=username))
-        global Configuracao
-        Configuracao = session['Configuracao']
     return render_template('login.html')
 
 
@@ -1002,6 +960,7 @@ def logout():
 @app.route('/create_user', methods=['GET', 'POST'])
 def create_user():
     global radios
+    global Configuracao
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -1011,7 +970,7 @@ def create_user():
             session['markers'] = []
             session['perdas'] = {}
             session['cobertura'] = []
-            session['Configuracao'] = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
+            session['Configuracao'] = Configuracao
             session['mapas'] = []
             session['radios'] = radios
             return redirect(url_for('home'))
@@ -1034,7 +993,7 @@ def index_map():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    fol = addfoliun()
+    fol = addfoliun(session['mapas'], session['cobertura'])
     fol.add_child(folium.LatLngPopup())
 
     for marker in session['markers']:
@@ -1068,9 +1027,9 @@ def add_marker():
     h = float(request.form.get('h'))
     ant = str(request.form.get('ant'))
 
-    markers = session['markers']
-    markers.append({'lat': lat, 'lon': lon, 'nome': nome, 'h': h, 'radio': ra, 'pot': pot, 'ant': ant})
-    session['markers'] = markers
+    local_markers = session['markers']
+    local_markers.append({'lat': lat, 'lon': lon, 'nome': nome, 'h': h, 'radio': ra, 'pot': pot, 'ant': ant})
+    session['markers'] = local_markers
 
     return jsonify({'result': 'success'})
 
@@ -1080,9 +1039,9 @@ def ptp():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    markers = session['markers']
-    Configuracao = session['Configuracao']
-    perdas = {}
+    local_markers = session['markers']
+    local_Configuracao = session['Configuracao']
+    local_perdas = {}
     fig_name = ''
     figura = ''
     ht, hr = 0, 0
@@ -1093,7 +1052,7 @@ def ptp():
         # calcular perda Aqui antes das operacoes abaixo
         if request.form.get("ponto1") and request.form.get("ponto2") and request.form.get("f"):
             fig_name = str(request.form.get("ponto1")) + "_" + str(request.form.get("ponto2"))
-            for i in markers:
+            for i in local_markers:
                 if i['nome'] == request.form.get("ponto1"):
                     p1 = (i['lon'], i['lat'])
                     ht = i['h']
@@ -1116,8 +1075,6 @@ def ptp():
             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
                                                 indice_visada)
 
-            print(
-                f' ({f}, {hg1}, {hg2}, {he1}, {he2}, {d}, {yt}, {qs}, {dl1}, {dl2}, {Dh}, {visada}, {h_urb},{teta1}, {teta2}, {urban})')
             hmed = (dem[0] + dem[-1]) / 2
             dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
             espaco_livre = Modelos.friis_free_space_loss_db(f, d)
@@ -1129,13 +1086,13 @@ def ptp():
                                                                                 teta1, teta2, polarizacao='v')
 
             min_alt = Modelos.min_alt_ikegami(f)
-            if h_urb > float(Configuracao["alt_max"]):
-                h_urb = float(Configuracao["alt_max"]) + min_alt
+            if h_urb > float(local_Configuracao["alt_max"]):
+                h_urb = float(local_Configuracao["alt_max"]) + min_alt
             else:
                 h_urb = h_urb + min_alt
             if (urban == 'wi'):
                 if (h_urb > hg2 + min_alt):
-                    urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(Configuracao["largura_da_rua"]))
+                    urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(local_Configuracao["largura_da_rua"]))
                 else:
                     h_urb = hg2 + min_alt
                     urb = Modelos.ikegami_model(h_urb, hg2, f)
@@ -1151,7 +1108,7 @@ def ptp():
                 Perda_por_terreno = (itm + variabilidade_situacao)
             perda = Perda_por_terreno + vegetacao + urb + espaco_livre
 
-            perdas = {'ponto1': request.form.get("ponto1"),
+            local_perdas = {'ponto1': request.form.get("ponto1"),
                       'ponto2': request.form.get("ponto2"),
                       'f': f,
                       'EspacoLivre': round(10 * espaco_livre) / 10,
@@ -1221,38 +1178,38 @@ def ptp():
             # fig.figure(figsize=(10, 5))
             fig.savefig(figura, format="jpg")
 
-    return render_template('ptp.html', perdas=perdas, markers=markers, figura=figura)
+    return render_template('ptp.html', perdas=local_perdas, markers=local_markers, figura=figura)
 
 
 @app.route('/area', methods=['GET', 'POST'])
 def area():
     if 'username' not in session:
         return redirect(url_for('login'))
-    Configuracao = session['Configuracao']
-    cobertura = session['cobertura']
-    markers = session['markers']
+    local_Configuracao = session['Configuracao']
+    local_cobertura = session['cobertura']
+    local_markers = session['markers']
     p1 = ()
     ht = 2
     if request.form.get("ponto") and request.form.get("raio") and request.form.get("f"):
         limear = 100
 
-        for i in markers:
+        for i in local_markers:
             if i['nome'] == request.form.get("ponto"):
                 p1 = (i['lon'], i['lat'])
                 ht = i['h']
         hr = 2
         caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
-        precisao = 1 / float(Configuracao[
+        precisao = 1 / float(local_Configuracao[
                                  'precisao'])  # 0.5  # precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
-        largura_da_rua = Configuracao["largura_da_rua"]
+        largura_da_rua = local_Configuracao["largura_da_rua"]
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr,
                                             float(request.form.get("f")), precisao, largura_da_rua)
 
         img = criaimg(caminho)
-        cobertura.append(
+        local_cobertura.append(
             {'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho,
              'f': float(request.form.get("f")), 'img': img, 'h': float(ht)})
-        session['cobertura'] = cobertura
+        session['cobertura'] = local_cobertura
 
     return render_template('area.html')
 
@@ -1263,17 +1220,18 @@ def conf():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        Configuracao = {"urb": int(request.form.get("urb")), "veg": int(request.form.get("veg")),
+        local_Configuracao = {"urb": int(request.form.get("urb")), "veg": int(request.form.get("veg")),
                         "precisao": float(request.form.get("precisao")),
                         "largura_da_rua": float(request.form.get("larg")),
                         "alt_max": float(request.form.get("alt"))}
-        session['Configuracao'] = Configuracao
+        session['Configuracao'] = local_Configuracao
 
     return render_template('conf.html')
 
 
 @app.route('/addmapa', methods=['GET', 'POST'])
 def addmapa():
+    local_mapa=session['mapas']
     if 'username' not in session:
         return redirect(url_for('login'))
 
@@ -1286,13 +1244,12 @@ def addmapa():
         if file.filename == '':
             return 'Nenhum arquivo selecionado'
 
-        mapas = session['mapas']
         if file and allowed_file(file.filename):
             filename = file.filename
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             caminho_completo = os.path.join('uploads', filename)
-            mapas.append([caminho_completo, filename[:-4]])
-            session['mapas'] = mapas
+            local_mapa.append([caminho_completo, filename[:-4]])
+            session['mapas'] = local_mapa
             with Image.open(caminho_completo) as img:
                 img = img.convert('RGB')
                 img.save(caminho_completo[:-4] + '.jpg', 'JPEG')
@@ -1364,35 +1321,34 @@ def salv():
         markers = session['markers']
         perdas = session['perdas']
         cobertura = session['cobertura']
-        Configuracao = session['Configuracao']
+        local_Configuracao = session['Configuracao']
         mapas = session['mapas']
         radios = session['radios']
+        data = {"markers": markers, "perdas": perdas, "cobertura": cobertura, "Configuracao": local_Configuracao,
+                "mapas": mapas, "radios": radios}
 
         with open(arquiv, 'wb') as arquivo:
             # Salvar as variáveis no arquivo
-            pickle.dump(markers, arquivo)
-            pickle.dump(perdas, arquivo)
-            pickle.dump(cobertura, arquivo)
-            pickle.dump(Configuracao, arquivo)
-            pickle.dump(mapas, arquivo)
-            pickle.dump(radios, arquivo)
-
+            pickle.dump(data, arquivo)
     return redirect(url_for('projetos'))
 
 
 @app.route('/carr', methods=['GET', 'POST'])
 def carr():
+
     if request.form.get("ncarr"):
         arquiv = "planejamentos\\" + str(request.form.get("ncarr"))
         arquiv = arquiv + ".pkl"
+
         with open(arquiv, 'rb') as arquivo:
             # Carregar as variáveis do arquivo
-            session['markers'] = pickle.load(arquivo)
-            session['perdas'] = pickle.load(arquivo)
-            session['cobertura'] = pickle.load(arquivo)
-            session['Configuracao'] = pickle.load(arquivo)
-            session['mapas'] = pickle.load(arquivo)
-            session['radios'] = pickle.load(arquivo)
+            data = pickle.load(arquivo)
+        session['markers'] = data['markers']
+        session['perdas'] = data['perdas']
+        session['cobertura'] = data['cobertura']
+        session['Configuracao'] = data['Configuracao']
+        session['mapas'] = data['mapas']
+        session['radios'] = data['radios']
 
     return redirect(url_for('index_map'))
 
