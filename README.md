@@ -14,8 +14,7 @@ Cálculo da atenuação rádio.
 
 # Motivação:
 
-: A motivação de desenvolver um aplicativo de esteganografia partiu da importância do conhecimento de aspectos relacionados a comunicações para tomada de decisão em operações militares.
-
+[...]
 # Tutorial de execução do script:
   1- Instale o interpretador python e adicione python nas variáveis de ambiente. 
 
