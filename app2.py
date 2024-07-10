@@ -1004,7 +1004,7 @@ def addfoliun():
     dadosprop=[]
     dadositms=[]
     erro=[]
-    with open('C:\PythonFlask\PlanCom\\plteste8.txt') as csvfile:
+    with open('C:\PythonFlask\PlanCom\\mtteste8.txt') as csvfile:
         spamreader = np.genfromtxt(csvfile, delimiter=',')
         cont = 0
 
