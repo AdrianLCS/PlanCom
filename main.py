@@ -885,7 +885,6 @@ def addfoliun(local_mapas, local_cobertura):
     software """
     folium_map = folium.Map(location=[-22.9120, -43.2089], zoom_start=7)
     try:
-
         folium.raster_layers.TileLayer(tiles='http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
                                        attr='google',
                                        name='google maps',
