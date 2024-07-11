@@ -879,7 +879,7 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
 
 
 def addfoliun(local_mapas, local_cobertura):
-    """Essa função utiliza a bibliotega Foliun para criar o mapa e as camadas de visualização na tela principal do
+    """Essa função utiliza a bibliotega Folium para criar o mapa e as camadas de visualização na tela principal do
     software """
     folium_map = folium.Map(location=[-22.9120, -43.2089], zoom_start=7)
     try:
@@ -1042,7 +1042,7 @@ def ptp():
     local_perdas = {}
     fig_name = ''
     figura = ''
-    ht, hr, potenciat, potenciar, sensibilidadet, sensibilidader = 0, 0, 0, 0, 0, 0
+    ht, hr, potenciat, potenciar, sensibilidadet, sensibilidader, g1, g2 = 0, 0, 0, 0, 0, 0, 0, 0
     p1 = ()
     p2 = ()
     if request.method == "POST":
@@ -1055,20 +1055,31 @@ def ptp():
                     p1 = (i['lon'], i['lat'])
                     ht = i['h']
                     potenciat = float(i['pot'])
+                    ant = i['ant']
                     num = 0
                     for y in range(len(local_radios)):
                         if local_radios[y]['nome'] == i['radio']:
                             num = y
                     sensibilidadet = local_radios[num]['sensibilidade']
+                    list_antenas = local_radios[num]['antenas']
+                    for j in list_antenas:
+                        if j['nome'] == ant:
+                            g1 = j['ganho']
+
                 elif i['nome'] == request.form.get("ponto2"):
                     p2 = (i['lon'], i['lat'])
                     hr = i['h']
                     potenciar = float(i['pot'])
+                    ant = i['ant']
                     num = 0
                     for y in range(len(local_radios)):
                         if local_radios[y]['nome'] == i['radio']:
                             num = y
                     sensibilidader = local_radios[num]['sensibilidade']
+                    list_antenas = local_radios[num]['antenas']
+                    for j in list_antenas:
+                        if j['nome'] == ant:
+                            g2 = j['ganho']
 
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia, r_global = perfil(p1, p2)
@@ -1116,7 +1127,6 @@ def ptp():
             else:
                 urb = 0
 
-
             # colocar aqu uma funcao que adiciona a perda por vegetacao
             if (Dh > 90):
                 Perda_por_terreno = (epstein)
@@ -1125,16 +1135,23 @@ def ptp():
             perda = Perda_por_terreno + vegetacao + urb + espaco_livre
 
             perda = round(10 * perda) / 10
-            pott1 = round(10 * (10*np.log10(1000*potenciat))) / 10
+            pott1 = round(10 * (10 * np.log10(1000 * potenciat))) / 10
             pott2 = round(10 * (10 * np.log10(1000 * potenciar))) / 10
-            potr1 = pott2 - perda
-            potr2 = pott1 - perda
-            fateqp=min(pott1-sensibilidader, pott2-sensibilidadet)
-            if fateqp-perda > 0:
-                resultado="Link fecha"
+            potr1 = round(10 * (pott2 + g1 + g2 - perda)) / 10
+            potr2 = round(10 * (pott1 + g1 + g2 - perda)) / 10
+            g1 = round(10 * g1) / 10
+            g2 = round(10 * g2) / 10
+            fateqp = min(pott1 + g1 + g2 - sensibilidader, pott2 + g1 + g2 - sensibilidadet)
+            if fateqp - perda > 0:
+                resultado = "Link fecha"
             else:
                 resultado = "Link não fecha"
-
+            if pott1 + g1 + g2 - sensibilidader==fateqp:
+                potencia_dbw = pott1 + g1 + g2
+                sensi_ref=sensibilidader
+            else:
+                potencia_dbw = pott2 + g1 + g2
+                sensi_ref = sensibilidadet
             local_perdas = {'ponto1': request.form.get("ponto1"),
                             'ponto2': request.form.get("ponto2"),
                             'f': f,
@@ -1145,6 +1162,8 @@ def ptp():
                             'perda': round(10 * perda) / 10,
                             'pott1': pott1,
                             'pott2': pott2,
+                            'ganho1': g1,
+                            'ganho2': g2,
                             'potr1': potr1,
                             'potr2': potr2,
                             'sensp1': sensibilidadet,
@@ -1190,7 +1209,7 @@ def ptp():
                         urb = 0
                     vet_perdas[u] = itm
                     vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-                    vet_perdas[u] = vegetacao + urb + Perda_por_terreno + espaco_livre
+                    vet_perdas[u] = potencia_dbw - (vegetacao + urb + Perda_por_terreno + espaco_livre)
 
             fig, ax1 = plt.subplots()
             ax1.plot(distancia, dem, label='Perfil do terreno', color="blue")
@@ -1202,10 +1221,10 @@ def ptp():
             ax2 = ax1.twinx()
 
             ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
-            ax2.set_ylabel('Perda em dB', color='red')
+            ax2.set_ylabel('Potência em dBm', color='red')
             ax2.tick_params(axis='y', labelcolor='red')
 
-            titulo = 'Perfil do terreno ' + fig_name + ', e perda total'
+            titulo = 'Perfil do terreno ' + fig_name + ', e potência recebida'
             plt.title(titulo)
             fig.tight_layout()
             figura = "static/imagens/perfil_" + fig_name + ".jpg"
@@ -1222,16 +1241,44 @@ def area():
     local_Configuracao = session['Configuracao']
     local_cobertura = session['cobertura']
     local_markers = session['markers']
+    local_radios = session['radios']
     p1 = ()
     ht = 2
-    if request.form.get("ponto") and request.form.get("raio") and request.form.get("f"):
-        limear = 100
-
+    potenciat, potenciar, sensibilidadet, sensibilidader, g1, g2 = 0, 0, 0, 0, 0, 0
+    if request.form.get("ponto") and request.form.get("raio") and request.form.get("f") and request.form.get("ponto2"):
         for i in local_markers:
             if i['nome'] == request.form.get("ponto"):
                 p1 = (i['lon'], i['lat'])
                 ht = i['h']
-        hr = 2
+                potenciat = float(i['pot'])
+                ant = i['ant']
+                num = 0
+                for y in range(len(local_radios)):
+                    if local_radios[y]['nome'] == i['radio']:
+                        num = y
+                sensibilidadet = local_radios[num]['sensibilidade']
+                list_antenas = local_radios[num]['antenas']
+                for j in list_antenas:
+                    if j['nome'] == ant:
+                        g1 = j['ganho']
+            if i['nome'] == request.form.get("ponto2"):
+                potenciar = float(i['pot'])
+                ant = i['ant']
+                num = 0
+                for y in range(len(local_radios)):
+                    if local_radios[y]['nome'] == i['radio']:
+                        num = y
+                sensibilidader = local_radios[num]['sensibilidade']
+                list_antenas = local_radios[num]['antenas']
+                for j in list_antenas:
+                    if j['nome'] == ant:
+                        g2 = j['ganho']
+
+        pott1 = round(10 * (10 * np.log10(1000 * potenciat))) / 10
+        pott2 = round(10 * (10 * np.log10(1000 * potenciar))) / 10
+
+        limear = min(pott1 + g1 + g2 - sensibilidader, pott2 + g1 + g2 - sensibilidadet)
+        hr = 1.5
         caminho, caminho_dsm, caminho_landcover = obter_raster(p1, p1)
         precisao = 1 / float(local_Configuracao[
                                  'precisao'])  # 0.5  # precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
@@ -1240,9 +1287,16 @@ def area():
                                             float(request.form.get("f")), precisao, largura_da_rua)
 
         img = criaimg(caminho)
-        local_cobertura.append(
-            {'nome': request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f"), 'raster': caminho,
-             'f': float(request.form.get("f")), 'img': img, 'h': float(ht)})
+        nova_cobertura = request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f")
+        novo = 0
+        for i in local_cobertura:
+            if i['nome'] == nova_cobertura:
+                novo = 1
+
+        if novo == 1:
+            local_cobertura.append(
+                {'nome': nova_cobertura, 'raster': caminho, 'f': float(request.form.get("f")), 'img': img,
+                 'h': float(ht)})
         session['cobertura'] = local_cobertura
 
     return render_template('area.html')

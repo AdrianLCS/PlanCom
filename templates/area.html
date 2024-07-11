@@ -6,8 +6,11 @@
         <h2 style="text-align: center;">Predicão em Área</h2>
     <ol>
         <form action="{{url_for('area')}}" method="post">
-            <label for="ponto">Ponto</label>
+            <label for="ponto">Estação fixa</label>
             <input type="text" id="ponto" name="ponto" required>
+
+            <label for="ponto2">Estação móvel</label>
+            <input type="text" id="ponto2" name="ponto2" required>
 
             <label for="raio">Raio</label>
             <input type="text" id="raio" name="raio" required>
