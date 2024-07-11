@@ -382,9 +382,6 @@ def los_atenuatio(d, k, teta1, teta2, dl, Ye, dls, he1, he2, dl1, dl2, Zg, Dh, h
                 AK1 = md
                 AK2 = 0
     Ael = A2 - AK1 * d2
-    print(AK1)
-    print(AK2)
-    print(Ael)
     if visada:
         At = alos(k, dls, Dh, d, md, Aed, he1, he2, Zg)[1]
     else:

@@ -19,14 +19,12 @@ c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
 Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
-
-
-# Criar opção de adiconar rádio
-radio1 = {'nome': '7800V-HH', 'sensibilidade': -97, 'faixa_de_freq': [30, 108],
-          'potencia': {'tipo': 1, 'valor': [1, 5, 10]},
+# Criar opção de adiconar rádio #sensibilidade em e potencia W ganho em dB frequencia em MHz
+radio1 = {'nome': '"rf7800v"', 'sensibilidade': -116, 'faixa_de_freq': [30, 108],
+          'potencia': {'tipo': 1, 'valor': [0.25, 1, 2, 5, 10]},
           'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
-radio2 = {'nome': 'APX2000', 'sensibilidade': -97, 'faixa_de_freq': [30, 108],
-          'potencia': {'tipo': 0, 'valor': [0, 43]},
+radio2 = {'nome': 'APX2000', 'sensibilidade': -102, 'faixa_de_freq': [806, 870],
+          'potencia': {'tipo': 0, 'valor': [1, 3]},
           'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
 radios = [radio1, radio2]
 
@@ -1040,10 +1038,11 @@ def ptp():
 
     local_markers = session['markers']
     local_Configuracao = session['Configuracao']
+    local_radios = session['radios']
     local_perdas = {}
     fig_name = ''
     figura = ''
-    ht, hr = 0, 0
+    ht, hr, potenciat, potenciar, sensibilidadet, sensibilidader = 0, 0, 0, 0, 0, 0
     p1 = ()
     p2 = ()
     if request.method == "POST":
@@ -1055,9 +1054,21 @@ def ptp():
                 if i['nome'] == request.form.get("ponto1"):
                     p1 = (i['lon'], i['lat'])
                     ht = i['h']
+                    potenciat = float(i['pot'])
+                    num = 0
+                    for y in range(len(local_radios)):
+                        if local_radios[y]['nome'] == i['radio']:
+                            num = y
+                    sensibilidadet = local_radios[num]['sensibilidade']
                 elif i['nome'] == request.form.get("ponto2"):
                     p2 = (i['lon'], i['lat'])
                     hr = i['h']
+                    potenciar = float(i['pot'])
+                    num = 0
+                    for y in range(len(local_radios)):
+                        if local_radios[y]['nome'] == i['radio']:
+                            num = y
+                    sensibilidader = local_radios[num]['sensibilidade']
 
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia, r_global = perfil(p1, p2)
@@ -1073,6 +1084,13 @@ def ptp():
 
             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
                                                 indice_visada)
+
+            vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
+
+            print(ht)
+            print(hr)
+            print(espesura)
+            print(vegetacao)
 
             hmed = (dem[0] + dem[-1]) / 2
             dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
@@ -1098,7 +1116,6 @@ def ptp():
             else:
                 urb = 0
 
-            vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
 
             # colocar aqu uma funcao que adiciona a perda por vegetacao
             if (Dh > 90):
@@ -1107,14 +1124,32 @@ def ptp():
                 Perda_por_terreno = (itm + variabilidade_situacao)
             perda = Perda_por_terreno + vegetacao + urb + espaco_livre
 
+            perda = round(10 * perda) / 10
+            pott1 = round(10 * (10*np.log10(1000*potenciat))) / 10
+            pott2 = round(10 * (10 * np.log10(1000 * potenciar))) / 10
+            potr1 = pott2 - perda
+            potr2 = pott1 - perda
+            fateqp=min(pott1-sensibilidader, pott2-sensibilidadet)
+            if fateqp-perda > 0:
+                resultado="Link fecha"
+            else:
+                resultado = "Link não fecha"
+
             local_perdas = {'ponto1': request.form.get("ponto1"),
-                      'ponto2': request.form.get("ponto2"),
-                      'f': f,
-                      'EspacoLivre': round(10 * espaco_livre) / 10,
-                      'urb': round(10 * urb) / 10,
-                      'veg ': round(10 * vegetacao) / 10,
-                      'terreno': round(10 * Perda_por_terreno) / 10,
-                      'perda': round(10 * perda) / 10}
+                            'ponto2': request.form.get("ponto2"),
+                            'f': f,
+                            'EspacoLivre': round(10 * espaco_livre) / 10,
+                            'urb': round(10 * urb) / 10,
+                            'veg ': round(10 * vegetacao) / 10,
+                            'terreno': round(10 * Perda_por_terreno) / 10,
+                            'perda': round(10 * perda) / 10,
+                            'pott1': pott1,
+                            'pott2': pott2,
+                            'potr1': potr1,
+                            'potr2': potr2,
+                            'sensp1': sensibilidadet,
+                            'sensp2': sensibilidader,
+                            'resultado': resultado}
 
             vet_perdas = np.zeros(len(dem))
             for u in range(len(dem)):
@@ -1220,9 +1255,9 @@ def conf():
 
     if request.method == 'POST':
         local_Configuracao = {"urb": int(request.form.get("urb")), "veg": int(request.form.get("veg")),
-                        "precisao": float(request.form.get("precisao")),
-                        "largura_da_rua": float(request.form.get("larg")),
-                        "alt_max": float(request.form.get("alt"))}
+                              "precisao": float(request.form.get("precisao")),
+                              "largura_da_rua": float(request.form.get("larg")),
+                              "alt_max": float(request.form.get("alt"))}
         session['Configuracao'] = local_Configuracao
 
     return render_template('conf.html')
@@ -1230,7 +1265,7 @@ def conf():
 
 @app.route('/addmapa', methods=['GET', 'POST'])
 def addmapa():
-    local_mapa=session['mapas']
+    local_mapa = session['mapas']
     if 'username' not in session:
         return redirect(url_for('login'))
 
@@ -1334,7 +1369,6 @@ def salv():
 
 @app.route('/carr', methods=['GET', 'POST'])
 def carr():
-
     if request.form.get("ncarr"):
         arquiv = "planejamentos\\" + str(request.form.get("ncarr"))
         arquiv = arquiv + ".pkl"
