@@ -153,7 +153,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao,  local
     # dem0, dsm0, landcover0, distancia0 = [], [], [], []
     dem0, dsm0, landcover0, distancia0 = np.zeros((qtd_retas, qtd_pontos)), np.zeros((qtd_retas, qtd_pontos)), np.zeros(
         (qtd_retas, 3 * (qtd_pontos - 1) + 1)), np.zeros((qtd_retas, qtd_pontos))
-    controle = 0
+
     for i in range(int(360 * precisao)):
         vet = np.array([np.cos(i * 2 * np.pi / qtd_retas), np.sin(
             i * 2 * np.pi / qtd_retas)])  # roda no sentido positivo trigonométrio de 2 em 2 graus
@@ -169,8 +169,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao,  local
         dsm0[i] = dsm
         # landcover0.append(landcover)
         landcover0[i] = landcover
-        controle=controle+1
-        print(controle)
+        print(i)
     return retas, d, dem0, dsm0, landcover0, distancia0
 
 
