@@ -22,10 +22,10 @@ Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_
 # Criar opção de adiconar rádio #sensibilidade em e potencia W ganho em dB frequencia em MHz
 radio1 = {'nome': '"rf7800v"', 'sensibilidade': -116, 'faixa_de_freq': [30, 108],
           'potencia': {'tipo': 1, 'valor': [0.25, 1, 2, 5, 10]},
-          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
+          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 0}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
 radio2 = {'nome': 'APX2000', 'sensibilidade': -102, 'faixa_de_freq': [806, 870],
           'potencia': {'tipo': 0, 'valor': [1, 3]},
-          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 1}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
+          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 3}]}
 radios = [radio1, radio2]
 
 
@@ -141,7 +141,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
+def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao,  local_Configuracao):
     """Gera os perfis em intervalos azimutais dado pela Váriavel Configuracao, para o cáculo de área de cobertura"""
     comprimento_de_onda = c / (f * 1000000)
     # L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
@@ -158,7 +158,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao):
             i * 2 * np.pi / qtd_retas)])  # roda no sentido positivo trigonométrio de 2 em 2 graus
         pf = np.array(ponto) + vet * (
                 d / unidade_distancia) * (1 / 3600)
-        dem, dsm, landcover, distancia, r = perfil(ponto, pf, 1)
+        dem, dsm, landcover, distancia, r = perfil(ponto, pf,  local_Configuracao, 1)
         # distancia0.append(distancia)
         distancia0[i] = distancia
         retas.append(r)
@@ -214,7 +214,7 @@ def parametros_difracao(distancia, dem, ht, hr):
     return dls, hs
 
 
-def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao, largura_da_rua):
+def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao, largura_da_rua, local_Configuracao):
     """Essa é a principal função para gerar uma área de cobertura ela modifica um raster de DEM substituindo os
     valores por dois valores padronizados um para quando o enlace é possível e outro para quano o enlace não é possível.
     Uma imagem será gerada a partir desse raster com a função criaimg"""
@@ -232,7 +232,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
 
     unidade_distancia = 2 * np.pi * R(ponto[1]) / (360 * (1 / transform[0]))
     retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
-                                                                       precisao)
+                                                                       precisao,  local_Configuracao)
     xy = min(x, 3600 - x, y, 3600 - y)
     if xy * unidade_distancia <= raio:
         raster_unido = unir_raster_3x3(raster_path)
@@ -244,7 +244,6 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
         inv_transform = ~src.transform
         transform = src.transform
         x, y = inv_transform * (ponto[0], ponto[1])
-        global Configuracao
 
         # Abrir o arquivo raster para leitura e escrita
 
@@ -277,8 +276,8 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
 
                     min_alt = Modelos.min_alt_ikegami(f)
-                    if h_urb > float(Configuracao["alt_max"]):
-                        h_urb = float(Configuracao["alt_max"]) + min_alt
+                    if h_urb > float(local_Configuracao["alt_max"]):
+                        h_urb = float(local_Configuracao["alt_max"]) + min_alt
                     else:
                         h_urb = h_urb + min_alt
 
@@ -288,7 +287,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                         data[linha][coluna] = 2
                     else:
 
-                        if Configuracao["urb"]:
+                        if local_Configuracao["urb"]:
                             if ((landcover[-1] == 50) or (landcover[-2] == 50)) and (
                                     h_urb > hg2 + min_alt):
                                 urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(largura_da_rua))
@@ -297,7 +296,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                         else:
                             urb = 0
 
-                        if Configuracao["veg"]:
+                        if local_Configuracao["veg"]:
                             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht,
                                                                 distancia,
                                                                 indice_visada)
@@ -343,7 +342,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
     return pasta + file
 
 
-def criaimg(dem_file):
+def criaimg(dem_file, nova_cobertura):
     """Essa função é usada para criar uma imagem a partir de um Raster de canal único, é usada para formar a imagem
     que será visualizada como área de cobertura. O raster usado na entrada da função é gerado pela função
     modificar_e_salvar_raster """
@@ -363,11 +362,11 @@ def criaimg(dem_file):
                                                 dem_dataset.bounds.bottom, dem_dataset.bounds.top])
 
     # Salvar a imagem em um arquivo sem títulos, eixos e barra de cores
-    plt.savefig(dem_file[:-3] + "png", format="png", bbox_inches='tight', pad_inches=0)
+    plt.savefig('Raster/modificado/' + nova_cobertura + ".png", format="png", bbox_inches='tight', pad_inches=0)
 
     # Fechar a figura para liberar recursos
     plt.close()
-    return dem_file[:-3] + "png"
+    return 'Raster/modificado/' + nova_cobertura + ".png"
 
 
 def carregamapa(caminho_completo, filename):
@@ -448,12 +447,11 @@ def R(lat):
             ((a * np.cos(lat * np.pi / 180)) ** 2) + ((b * np.sin(lat * np.pi / 180)) ** 2))) ** 0.5
 
 
-def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area):
+def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, area, local_Configuracao):
     """Essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos dentro
     de um mesmo arquivo Raster. """
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
-    global Configuracao
-    if (Configuracao["urb"] or Configuracao["veg"]) or not area:
+    if ( local_Configuracao["urb"] or local_Configuracao["veg"]) or not area:
         with rasterio.open(caminho) as src:
             raster = src.read(1)
             inv_transform = ~src.transform
@@ -555,7 +553,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
         return dem, dsm, landcover, d, indice_atual
 
 
-def perfil(p1, p2, area=0):
+def perfil(p1, p2,  local_Configuracao, area=0):
     """Essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos que
     estejam em raster diferentes. Ela usa a função obter_dados_do_raster para obter o perfil ao longo do caminho em
     um cada um dos Rasters e une os perfis de Rasters diferentes
@@ -576,7 +574,7 @@ def perfil(p1, p2, area=0):
     landcover = np.zeros(3 * (tamanho - 1) + 1, dtype=int)
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
-                                                                     area)
+                                                                     area,  local_Configuracao)
 
     return dem, dsm, landcover, d, r
 
@@ -909,6 +907,7 @@ def addfoliun(local_mapas, local_cobertura):
         carregamapa(i[0], i[1]).add_to(folium_map)
 
     for i in local_cobertura:
+        print(i)
         criamapa(i['raster'], i['img'], local_cobertura).add_to(folium_map)
 
     folium_map.add_child(folium.LayerControl())
@@ -1082,7 +1081,7 @@ def ptp():
                             g2 = j['ganho']
 
             f = float(request.form.get("f"))
-            dem, dsm, landcover, distancia, r_global = perfil(p1, p2)
+            dem, dsm, landcover, distancia, r_global = perfil(p1, p2,  local_Configuracao)
             Densidade_urbana = 0.7
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
@@ -1284,16 +1283,16 @@ def area():
                                  'precisao'])  # 0.5  # precisao 1=> grau em grau, precisao 2=> 0.5  em 0.5 graus, precição n=>1/n em 1/n graus
         largura_da_rua = local_Configuracao["largura_da_rua"]
         caminho = modificar_e_salvar_raster(caminho, p1, float(request.form.get("raio")), limear, ht, hr,
-                                            float(request.form.get("f")), precisao, largura_da_rua)
+                                            float(request.form.get("f")), precisao, largura_da_rua, local_Configuracao)
 
-        img = criaimg(caminho)
         nova_cobertura = request.form.get("ponto") + '_Area_de_cobertura' + '_' + request.form.get("f")
+        img = criaimg(caminho, nova_cobertura)
         novo = 0
         for i in local_cobertura:
             if i['nome'] == nova_cobertura:
                 novo = 1
 
-        if novo == 1:
+        if novo == 0:
             local_cobertura.append(
                 {'nome': nova_cobertura, 'raster': caminho, 'f': float(request.form.get("f")), 'img': img,
                  'h': float(ht)})
