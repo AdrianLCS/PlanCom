@@ -44,5 +44,21 @@ A Figura abaixo mostra a aba "Add Ponto", onde é realizada a adição de marcad
 [...]
 [...]
 [...]
-# Tutorial de compliação do código:
-[...]
+# Arqivos necessários:
+Para cada Região de planejamento é necessário baixar o Modelo digital de superfíce DSM precição 1 arcsec o modelo digita de Terreno DTM  precisão 1 arcsec e o modelo de digital de Land Cover precição 10 m.
+Verifique quais a coordenadas do ponto onde se deseja fazer a predião de enlace rádio e baixe os modelos de Elevação e land Cover que abranjam esse local.
+
+# Local de Download dos modelos digitais de Elevação e Land Cover:
+O DSM pode ser baixado no link: https://opentopography.s3.sdsc.edu/minio/raster/AW3D30/AW3D30_global/ ou https://portal.opentopography.org/raster?opentopoID=OTSDEM.032021.4326.3.
+O DTM pode ser baixado no link: https://data.bris.ac.uk/data/dataset/s5hqmjcdj8yo2ibzi9b4ew3sn
+O LandCover pode ser baixado no link: https://worldcover2021.esa.int/downloader
+Todos em formato .tif
+
+# Local onde os modelos digitais de Elevação e Land Cover devem ser colocados:
+DTM:
+Copie e cole o DTM dentro da pasta Raster que está na pasta do projeto com o nome padrão S04W054.tif sendo 04 a latitude em graus do ponto mais a sul do arquivo e 054 a longitude em graus do ponto mais a oeste do arquivo.
+DSM:
+Copie e cole o DSM dentro da pasta dsm que está na pasta do projeto com o nome padrão, por exempo N05E047.tif sendo 05 a latitude em graus do ponto mais a sul do arquivo e 057 a longitude em graus do ponto mais a oeste do arquivo.
+LandCover:
+Copie e cole o arqivo de Land Cover dentro da pasta LandCover que está na pasta do projeto com o nome padrão, por exempo N12W021.tif sendo 12 a latitude em graus do ponto mais a sul do arquivo e 021 a longitude em graus do ponto mais a oeste do arquivo.
+
