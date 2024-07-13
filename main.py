@@ -18,7 +18,7 @@ users = {'adrian': 'adrian', 'user2': 'password2'}
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
-Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 7}
+Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 100}
 # Criar opção de adiconar rádio #sensibilidade em e potencia W ganho em dB frequencia em MHz
 radio1 = {'nome': '"rf7800v"', 'sensibilidade': -116, 'faixa_de_freq': [30, 108],
           'potencia': {'tipo': 1, 'valor': [0.25, 1, 2, 5, 10]},
@@ -275,7 +275,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     dsm = dsm0[angulo2][:int(distyx)]
                     landcover = landcover0[angulo2][:3 * int(distyx - 1) + 1]
                     distancia = distancia0[angulo2][:int(distyx)]
-                    Densidade_urbana = 0.7
+                    Densidade_urbana = 1
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
 
@@ -292,7 +292,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     else:
 
                         if local_Configuracao["urb"]:
-                            if ((landcover[-1] == 50) or (landcover[-2] == 50)) and (
+                            if ((landcover[-1] == 50)or(landcover[-2] == 50) or(landcover[-3] == 50)) and (
                                     h_urb > hg2 + min_alt):
                                 urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(largura_da_rua))
                             else:
@@ -469,6 +469,11 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     # pixel_x1, pixel_y1 = int(r[i][1]-latdem0),int(r[i][0]-londem0)
                     pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
                     dist = distancia * i
+
+                    #alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+                    if int(pixel_x1)==3600 or int(pixel_y1) ==3600:
+                        pixel_x1 = 3599
+                        pixel_y1= 3599
                     alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
 
                     # d.append(dist)
@@ -489,7 +494,12 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                         np.floor(r[i][1]) == np.floor(r[indice_atual_dsm][1])):
                     pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
 
+                    #alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                    if int(pixel_x1) == 3600 or int(pixel_y1) == 3600:
+                        pixel_x1 = 3599
+                        pixel_y1= 3599
                     alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+
                     # dsm.append(alt_dsm)
                     dsm[i] = alt_dsm
                     indice_atual_dsm = i
@@ -1085,10 +1095,10 @@ def ptp():
 
             f = float(request.form.get("f"))
             dem, dsm, landcover, distancia, r_global = perfil(p1, p2,  local_Configuracao)
-            Densidade_urbana = 0.7
+            Densidade_urbana = 1
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            if (landcover[-1] == 50) and (landcover[-2] == 50):
+            if (landcover[-1] == 50)or(landcover[-2] == 50) or (landcover[-3] == 50):
                 urban = 'wi'
             else:
                 urban = 'n'
