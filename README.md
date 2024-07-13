@@ -1,7 +1,3 @@
-Claro, aqui está o arquivo `readme.md` com as correções de ortografia, mantendo o formato original com os marcadores da linguagem:
-
----
-
 # ComPlanner
 
 # Tema:
