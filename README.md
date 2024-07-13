@@ -72,3 +72,5 @@ Copie e cole o DSM dentro da pasta `dsm` que está na pasta do projeto com o nom
 Copie e cole o arquivo de Land Cover dentro da pasta `LandCover` que está na pasta do projeto com o nome padrão, por exemplo, `N12W021.tif`, sendo 12 a latitude em graus do ponto mais ao sul do arquivo e 021 a longitude em graus do ponto mais a oeste do arquivo.
 
 ---
+
+Esse projeto pode ser baixado no botão "<>Code" acima. em seguida "Download .zip".
