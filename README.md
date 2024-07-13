@@ -73,6 +73,7 @@ Copie e cole o arquivo de Land Cover dentro da pasta `LandCover` que está na pa
 
 ---
 
-No repositório já estão os arquivos de modelo digital de elevação e land cover da região do Rio de Janeiro e de Brasília
+No repositório já estão os arquivos de modelo digital de elevação da região do Rio de Janeiro e de Brasília. 
+O land cover de Brasilia e Rio podes ser baixados no link: https://drive.google.com/drive/folders/1DBOuxq-hc90U32mBMR3DUIPvVci31MpK?usp=drive_link
 
 Esse projeto pode ser baixado no botão "<>Code" acima. em seguida "Download .zip".
