@@ -71,8 +71,9 @@ Copie e cole o DSM dentro da pasta `dsm` que está na pasta do projeto com o nom
 Copie e cole o arquivo de Land Cover dentro da pasta `LandCover` que está na pasta do projeto com o nome padrão, por exemplo, `N12W021.tif`, sendo 12 a latitude em graus do ponto mais ao sul do arquivo e 021 a longitude em graus do ponto mais a oeste do arquivo.
 
 ---
+Link para downloado dos modelos digitas de superfície (pata dsm) e modelo digitas de terreno (pasta Raster) de Brasilia e Rio: Brasilia e Rio:
+https://drive.google.com/drive/u/0/folders/1k5VBIpTVCEszTpykrOkx9SCyNPFD5Jhk
 
-No repositório já estão os arquivos de modelo digital de elevação da região do Rio de Janeiro e de Brasília. 
 O land cover de Brasilia e Rio podes ser baixados no link: https://drive.google.com/drive/folders/1DBOuxq-hc90U32mBMR3DUIPvVci31MpK?usp=drive_link
 
 Esse projeto pode ser baixado no botão "<>Code" acima. em seguida "Download .zip".
