@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{%block conteudo%}
+
+<body>
+    <div id="addradio" style="height: 15%;">
+        <h2 style="text-align: center;">Adição de rádios</h2>
+    <ol>
+        <form action="{{url_for('addradio')}}" method="post">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" required>
+
+            <label for="sens">Sensibilidade em dBm</label>
+            <input type="text" id="sens" name="sens" required>
+
+            <label for="pott">Potência de Transmissão em W</label>
+            <input type="text" id="pott" name="pott" required>
+
+            <label for="nomeant">Nome da Antena</label>
+            <input type="text" id="nomeant" name="nomeant" required>
+
+            <label for="gan">Ganho da Antena em dB</label>
+            <input type="text" id="gan" name="gan" required>
+
+            <button>Adicionar Rádio</button>
+        </form>
+    </ol>
+    </div>
+
+</body>
+{% endblock conteudo%}
