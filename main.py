@@ -4,6 +4,8 @@ from flask import Flask, render_template, redirect, url_for, request, session, j
 import os
 import folium
 import pickle
+from folium.plugins import HeatMap
+import branca.colormap
 import matplotlib.pyplot as plt
 import Modelos
 from PIL import Image
@@ -18,15 +20,32 @@ users = {'adrian': 'adrian', 'user2': 'password2'}
 c = 299792458  # m/s
 a = 6378137  # m
 b = 6356752  # m
-Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 100}
+Configuracao = {"urb": 1, "veg": 1, "precisao": 4, "largura_da_rua": 22.5, "alt_max": 100, 'sit': 70}
 # Criar opção de adiconar rádio #sensibilidade em e potencia W ganho em dB frequencia em MHz
-radio1 = {'nome': '"rf7800v"', 'sensibilidade': -116, 'faixa_de_freq': [30, 108],
+radio1 = {'nome': '"RF7800V-HH"', 'sensibilidade': -116, 'faixa_de_freq': [30, 108],
           'potencia': {'tipo': 1, 'valor': [0.25, 1, 2, 5, 10]},
           'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 0}, {'nome': 'bade', 'tiopo': 0, 'ganho': 1}]}
-radio2 = {'nome': 'APX2000', 'sensibilidade': -102, 'faixa_de_freq': [806, 870],
+radio2 = {'nome': 'APX2000-(Motorola Portátil)', 'sensibilidade': -102, 'faixa_de_freq': [806, 870],
           'potencia': {'tipo': 0, 'valor': [1, 3]},
           'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 3}]}
-radios = [radio1, radio2]
+radio3 = {'nome': 'APX2500-(Motorola Veicular)', 'sensibilidade': -121, 'faixa_de_freq': [806, 870],
+          'potencia': {'tipo': 0, 'valor': [3, 35]},
+          'antenas': [{'nome': 'wip', 'tiopo': 0, 'ganho': 3}]}
+radio4 = {'nome': 'RF7800W', 'sensibilidade': -98, 'faixa_de_freq': [4900, 5850],
+          'potencia': {'tipo': 1, 'valor': [0.0631, 0.1, 0.158]},
+          'antenas': [{'nome': 'AT206', 'tiopo': 1, 'ganho': 8}, {'nome': 'AT207', 'tiopo': 1, 'ganho': 14},
+                      {'nome': 'AT201', 'tiopo': 1, 'ganho': 21}, {'nome': 'AT202', 'tiopo': 1, 'ganho': 26},
+                      {'nome': 'AT203', 'tiopo': 1, 'ganho': 30}]}
+radio5 = {'nome': 'MPR9600', 'sensibilidade': -113, 'faixa_de_freq': [1.6, 30],
+          'potencia': {'tipo': 1, 'valor': [1, 5, 20, 50]},
+          'antenas': [{'nome': 'Dipolo 1/2 onda', 'tiopo': 1, 'ganho': 2.5},
+                      {'nome': 'Vertical', 'tiopo': 0, 'ganho': 1}]}
+
+radio6 = {'nome': 'GTR800', 'sensibilidade': -116, 'faixa_de_freq': [1.6, 30],
+          'potencia': {'tipo': 0, 'valor': [2, 100]},
+          'antenas': [{'nome': 'Cilindrica', 'tiopo': 0, 'ganho': 1}]}
+
+radios = [radio1, radio2, radio3, radio4, radio5, radio6]
 
 
 def generate_raster_files(base_string):
@@ -141,7 +160,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao,  local_Configuracao):
+def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao, local_Configuracao):
     """Gera os perfis em intervalos azimutais dado pela Váriavel Configuracao, para o cáculo de área de cobertura"""
     comprimento_de_onda = c / (f * 1000000)
     # L_db = -20 * np.log10(comprimento_de_onda) + 20 * np.log10(d) + 22
@@ -159,7 +178,7 @@ def extrair_vet_area(raio, ponto, f, limear, unidade_distancia, precisao,  local
             i * 2 * np.pi / qtd_retas)])  # roda no sentido positivo trigonométrio de 2 em 2 graus
         pf = np.array(ponto) + vet * (
                 d / unidade_distancia) * (1 / 3600)
-        dem, dsm, landcover, distancia, r = perfil(ponto, pf,  local_Configuracao, 1)
+        dem, dsm, landcover, distancia, r = perfil(ponto, pf, local_Configuracao, 1)
         # distancia0.append(distancia)
         distancia0[i] = distancia
         retas.append(r)
@@ -216,14 +235,15 @@ def parametros_difracao(distancia, dem, ht, hr):
     return dls, hs
 
 
-def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao, largura_da_rua, local_Configuracao):
+def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, precisao, largura_da_rua,
+                              local_Configuracao):
     """Essa é a principal função para gerar uma área de cobertura ela modifica um raster de DEM substituindo os
     valores por dois valores padronizados um para quando o enlace é possível e outro para quano o enlace não é possível.
     Uma imagem será gerada a partir desse raster com a função criaimg"""
     pasta = raster_path[:-11] + 'modificado'
     file = '\A' + raster_path[-11:]
     yt = 1
-    qs = 5
+    qs = round(float(local_Configuracao['sit']) / 10)
 
     with rasterio.open(raster_path, 'r+') as src:
         # Ler a matriz de dados do raster
@@ -234,7 +254,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
 
     unidade_distancia = 2 * np.pi * R(ponto[1]) / (360 * (1 / transform[0]))
     retas, raio, dem0, dsm0, landcover0, distancia0 = extrair_vet_area(raio, ponto, f, limear, unidade_distancia,
-                                                                       precisao,  local_Configuracao)
+                                                                       precisao, local_Configuracao)
     xy = min(x, 3600 - x, y, 3600 - y)
     if xy * unidade_distancia <= raio:
         raster_unido = unir_raster_3x3(raster_path)
@@ -275,7 +295,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     dsm = dsm0[angulo2][:int(distyx)]
                     landcover = landcover0[angulo2][:3 * int(distyx - 1) + 1]
                     distancia = distancia0[angulo2][:int(distyx)]
-                    Densidade_urbana = 1
+                    Densidade_urbana = 0.9
                     d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                         dem, dsm, distancia, ht, hr, Densidade_urbana)
 
@@ -292,7 +312,7 @@ def modificar_e_salvar_raster(raster_path, ponto, raio, limear, ht, hr, f, preci
                     else:
 
                         if local_Configuracao["urb"]:
-                            if ((landcover[-1] == 50)or(landcover[-2] == 50) or(landcover[-3] == 50)) and (
+                            if ((landcover[-1] == 50) or (landcover[-2] == 50) or (landcover[-3] == 50)) and (
                                     h_urb > hg2 + min_alt):
                                 urb = Modelos.ikegami_model(h_urb, hg2, f, w=float(largura_da_rua))
                             else:
@@ -455,7 +475,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
     """Essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos dentro
     de um mesmo arquivo Raster. """
     caminho, caminho_dsm, caminho_landcover = obter_raster(r[indice_atual], r[indice_atual])
-    if ( local_Configuracao["urb"] or local_Configuracao["veg"]) or not area:
+    if (local_Configuracao["urb"] or local_Configuracao["veg"]) or not area:
         with rasterio.open(caminho) as src:
             raster = src.read(1)
             inv_transform = ~src.transform
@@ -470,10 +490,10 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                     pixel_x1, pixel_y1 = inv_transform * (r[i][0], r[i][1])
                     dist = distancia * i
 
-                    #alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
-                    if int(pixel_x1)==3600 or int(pixel_y1) ==3600:
+                    # alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
+                    if int(pixel_x1) == 3600 or int(pixel_y1) == 3600:
                         pixel_x1 = 3599
-                        pixel_y1= 3599
+                        pixel_y1 = 3599
                     alt_dem = raster[int(pixel_y1)][int(pixel_x1)]
 
                     # d.append(dist)
@@ -494,10 +514,10 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
                         np.floor(r[i][1]) == np.floor(r[indice_atual_dsm][1])):
                     pixel_x1_dsm, pixel_y1_dsm = inv_transform_dsm * (r[i][0], r[i][1])
 
-                    #alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
+                    # alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
                     if int(pixel_x1) == 3600 or int(pixel_y1) == 3600:
                         pixel_x1 = 3599
-                        pixel_y1= 3599
+                        pixel_y1 = 3599
                     alt_dsm = raster_dsm[int(pixel_y1_dsm)][int(pixel_x1_dsm)]
 
                     # dsm.append(alt_dsm)
@@ -567,7 +587,7 @@ def obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia, ar
         return dem, dsm, landcover, d, indice_atual
 
 
-def perfil(p1, p2,  local_Configuracao, area=0):
+def perfil(p1, p2, local_Configuracao, area=0):
     """Essa função extrai o perfil de elevação superfífice e land Cover ao longo do caminho entre dois pontos que
     estejam em raster diferentes. Ela usa a função obter_dados_do_raster para obter o perfil ao longo do caminho em
     um cada um dos Rasters e une os perfis de Rasters diferentes
@@ -588,7 +608,7 @@ def perfil(p1, p2,  local_Configuracao, area=0):
     landcover = np.zeros(3 * (tamanho - 1) + 1, dtype=int)
     while indice_atual < np.shape(r)[0] - 1:
         dem, dsm, landcover, d, indice_atual = obter_dados_do_raster(indice_atual, r, dem, dsm, landcover, d, distancia,
-                                                                     area,  local_Configuracao)
+                                                                     area, local_Configuracao)
 
     return dem, dsm, landcover, d, r
 
@@ -802,7 +822,7 @@ def obter_dados_do_perfil(dem, dsm, distancia, ht, hr, Densidade_urbana):
     # hb altura do transmissor, de 4 a 50- equivalente para cost25 sem visada
     global Configuracao
     if Configuracao["urb"]:
-        h_urb = abs((1 / Densidade_urbana) * (dsm[-1]+dsm[-2] - dem[-1]-dem[-2])/2)
+        h_urb = abs((1 / Densidade_urbana) * (dsm[-1] + dsm[-2] - dem[-1] - dem[-2]) / 2)
     else:
         h_urb = 0
 
@@ -814,7 +834,8 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
     dem = np.array(dem)
     dsm = np.array(dsm)
 
-    altur_da_cobertuta = abs(dsm[indice:] - dem[indice:])
+    altur_da_cobertuta = np.abs(dsm[indice:] - dem[indice:])
+
     espesura = 0
     if indice == 0:
         contar0 = 0
@@ -829,13 +850,13 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             y = m * x + c
             los = y - (dem - (dem[-1] + hr))
         for i in range(len(los) - 1):
-            if los[i] < ((rfresn3 * (abs(len(los) - 1) / 2 - i) * 2 / (len(los) - 1))):
+            if los[i] < (rfresn3 * abs((len(los) - 1)/2)-(((len(los) - 1)/2)-i)):
                 contar0 = contar0 + 1
             if los[i] < altur_da_cobertuta[i]:
                 for n in (0, 1, 2):
                     if landcover[3 * (indice + i) + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        if (contar0 > 0) and (espesura > 100):
+        if (espesura > 100):#(contar0 > 0) and (espesura > 100):
             espesura = espesura / 2
 
 
@@ -864,30 +885,38 @@ def obter_vegeta_atravessada(f, indice, dem, landcover, dsm, hr, ht, distancia, 
             los2 = y2 - (dem[:indice_d + 1] - (dem[indice_d]))
         contar1 = 0
         contar2 = 0
-        for i in range(len(los) - 1):
-            if los[i] < ((rfresn * (len(los) - i - 1) / (len(los) - 1))):
-                contar1 = contar1 + 1
+
+        #print(altur_da_cobertuta)
+        #print(landcover[3 * (indice - 1) + 1:])
+        for i in range(len(los)):
+
             if los[i] < altur_da_cobertuta[i]:
+                if los[i] < ((rfresn * (len(los) - i) / (len(los)))):
+                    contar1 = contar1 + 1
                 for n in (0, 1, 2):
-                    if landcover[3 * (indice + i) + n] == 10:
+                    if landcover[3 * (indice + i - 1) + n + 1] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
 
-        if (contar1 > 0) and (espesura > 100):
+        if (espesura > 100):#(contar1 > 0) and (espesura > 100):#
             espesura = espesura / 2
         ref = espesura
+        #print(ref)
         altur_da_cobertuta2 = abs(dsm[:indice_d + 1] - dem[:indice_d + 1])
-        for i in range(len(los2) - 2):
-            if los2[i] < ((rfresn2 * (len(los2) - i - 2) / (len(los2) - 2))):
-                contar2 = contar2 + 1
-
+        #print(altur_da_cobertuta2)
+        #print(landcover[:3 * len(los2)])
+        for i in range(len(los2)):
             if los2[i] < altur_da_cobertuta2[i]:
+                if los2[i] < ((rfresn2 * (len(los2) - i) / (len(los2)))):
+                    contar2 = contar2 + 1
                 for n in (0, 1, 2):
                     if landcover[3 * i + n] == 10:
                         espesura = espesura + 10  # ( colocar 5, metade dos 10 m)
-        if (contar2 > 0) and (espesura > 100):
+
+        if (espesura-ref > 100):#(contar2 > 0) and (espesura-ref > 100):
             espesura = ref + (espesura - ref) / 2
 
-    return 0.6 * espesura  # considerando 50% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
+        #print(espesura)
+    return 0.6 * espesura  # considerando 40% da area coberta com vegetação elevada. a documentação dos dados estabelec 10% ou mais
 
 
 def addfoliun(local_mapas, local_cobertura):
@@ -922,6 +951,88 @@ def addfoliun(local_mapas, local_cobertura):
 
     for i in local_cobertura:
         criamapa(i['raster'], i['img'], local_cobertura).add_to(folium_map)
+
+    """medido=[]
+    dadosmedido=[]
+    dadositm = []
+    dadosprop=[]
+    dadositms=[]
+    erro=[]
+    with open('C:\PythonFlask\PlanCom\\mtteste12.txt') as csvfile:
+        spamreader = np.genfromtxt(csvfile, delimiter=',')
+        cont = 0
+
+        for row in spamreader:
+            if cont != 0:
+                m = []
+                for i in row:
+                    m.append(i)
+                if m[12]<100:
+                    dadosmedido.append([m[3],m[2],m[12]])
+                    dadositm.append([m[3], m[2], m[10]])
+                    dadosprop.append([m[3], m[2], m[11]])
+                    dadositms.append([m[3], m[2], m[6]])
+                    medido.append([m[12], m[6],m[11],m[10]]) #medido.append(m[11] - m[12])  #
+                    erro.append([m[3], m[2], m[11] - m[12]])
+
+            cont += 1
+
+    #dicionario_cores={.1:'00FFFF',.2:'00FFCC',.3:'33CCCC',0.4:'669999',0.5:'996699',0.6:'CC3366',0.7:'FF3366',.8:'FF0033',0.9:'FF0000'}#'00FFFF','00FFCC','33CCCC','669999','996699', 'CC3366', 'FF3366','FF0033','FF0000'
+    #dicionario_cores = {.2: "blue", .5: "cyan", .6: "lime", .7: "yellow", 1: "red"}
+    #dicionario_cores = {.2: (0,0,255), .5: (0,102,127), .6: (0,255,0), .7: (127,127,0), 1: (255,0,0)}
+
+    mini=np.min(medido)
+    maxi=np.max(medido)
+
+    dadosmedido.append([50.2819, -81.6231, mini])
+    dadosmedido.append([50.2819, -81.6231, maxi])
+    dadositm.append([50.2819, 8.320198953, mini])
+    dadositm.append([50.2819, 8.320198953, maxi])
+    dadosprop.append([50.2819, 8.320198953, mini])
+    dadosprop.append([50.2819, 8.320198953, maxi])
+    dadositms.append([50.2819, 8.320198953, mini])
+    dadositms.append([50.2819, 8.320198953, maxi])
+    #erro.append([4.991688749, 8.320198953, 0])
+    dadositm=np.array(dadositm)
+    dadositms = np.array(dadositms)
+    dadosmedido = np.array(dadosmedido)
+    dadosprop = np.array(dadosprop)
+    erro2=[]
+    erro1=[]
+    for i in range(len(erro)):
+        if erro[i][2]>=0:
+            erro1.append(erro[i])
+        else:
+            erro[i][2]=-erro[i][2]
+            erro2.append(erro[i])
+    erro1.append([4.991688749, 8.320198953, 0])
+    erro2.append([4.991688749, 8.320198953, 0])
+
+    erro1 = np.array(erro1)
+    erro2 = np.array(erro2)
+    #indices=[0.2,0.5,0.6,0.7, 1]
+    dicionario_cores = {
+        0.3: 'blue',
+        0.4: '#0040FF',  # Intermediate blue
+        0.45: '#0080FF',  # Lighter blue
+        0.5: '#00BFFF',  # Cyan
+        0.55: '#00FFBF',  # Greenish-cyan
+        0.57: '#00FF80',  # Light green
+        0.6: '#80FF00',  # Lime green
+        0.7: 'yellow',  # Yellow-green
+        0.8: '#FFBF00',  # Orange
+        0.9: '#FF8000',  # Dark orange
+        1.0: 'red'
+    }
+    indices = [0.0,0.1, 0.2, 0.3, 0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+    colormap=branca.colormap.LinearColormap(['blue','#0040FF', '#0080FF','#00BFFF','#00FFBF','#00FF80','#80FF00','yellow','#FFBF00','#FF8000','red'],index=indices)
+    colormap.scale(mini, maxi).add_to(folium_map)
+
+    HeatMap(data=dadosmedido, max_zoom=18,radius=15, name='medido',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadositm, max_zoom=18, radius=15, name='itm-urb-veg',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadosprop, max_zoom=18, radius=15, name='proprio',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=dadositms, max_zoom=18, radius=15, name='itm',blur=1, gradient=dicionario_cores).add_to(folium_map)
+    HeatMap(data=erro1, max_zoom=18, radius=15, name='erro', blur=1, gradient=dicionario_cores).add_to(folium_map)"""
 
     folium_map.add_child(folium.LayerControl())
     return folium_map
@@ -1094,26 +1205,21 @@ def ptp():
                             g2 = j['ganho']
 
             f = float(request.form.get("f"))
-            dem, dsm, landcover, distancia, r_global = perfil(p1, p2,  local_Configuracao)
-            Densidade_urbana = 1
+            dem, dsm, landcover, distancia, r_global = perfil(p1, p2, local_Configuracao)
+            Densidade_urbana = 0.9
             d, hg1, hg2, dl1, dl2, teta1, teta2, he1, he2, Dh, h_urb, visada, indice_visada_r, indice_visada = obter_dados_do_perfil(
                 dem, dsm, distancia, ht, hr, Densidade_urbana)
-            if (landcover[-1] == 50)or(landcover[-2] == 50) or (landcover[-3] == 50):
+            if (landcover[-1] == 50) or (landcover[-2] == 50) or (landcover[-3] == 50):
                 urban = 'wi'
             else:
                 urban = 'n'
             yt = 1  # é a perda pelo clima, adotar esse valor padrao inicialmente
-            qs = 5  # 70% das situacões
+            qs = round(float(local_Configuracao['sit']) / 10)  # 70% das situacões
 
             espesura = obter_vegeta_atravessada(f, indice_visada_r, dem, landcover, dsm, hr, ht, distancia,
                                                 indice_visada)
 
             vegetacao = Modelos.atenuaca_vegetacao_antiga_ITU(f, espesura)
-
-            print(ht)
-            print(hr)
-            print(espesura)
-            print(vegetacao)
 
             hmed = (dem[0] + dem[-1]) / 2
             dls, hs = parametros_difracao(distancia, dem, hg1, hg2)
@@ -1158,9 +1264,9 @@ def ptp():
                 resultado = "Link fecha"
             else:
                 resultado = "Link não fecha"
-            if pott1 + g1 + g2 - sensibilidader==fateqp:
+            if pott1 + g1 + g2 - sensibilidader == fateqp:
                 potencia_dbw = pott1 + g1 + g2
-                sensi_ref=sensibilidader
+                sensi_ref = sensibilidader
             else:
                 potencia_dbw = pott2 + g1 + g2
                 sensi_ref = sensibilidadet
@@ -1233,7 +1339,7 @@ def ptp():
             ax2 = ax1.twinx()
 
             ax2.plot(distancia, vet_perdas, label='Perfil do terreno', color="red")
-            ax2.set_ylabel('Potência em dBm', color='red')
+            ax2.set_ylabel('Potência recebida em dBm', color='red')
             ax2.tick_params(axis='y', labelcolor='red')
 
             titulo = 'Perfil do terreno ' + fig_name + ', e potência recebida'
@@ -1323,10 +1429,30 @@ def conf():
         local_Configuracao = {"urb": int(request.form.get("urb")), "veg": int(request.form.get("veg")),
                               "precisao": float(request.form.get("precisao")),
                               "largura_da_rua": float(request.form.get("larg")),
-                              "alt_max": float(request.form.get("alt"))}
+                              "alt_max": float(request.form.get("alt")),
+                              "sit": float(request.form.get("sit"))}
         session['Configuracao'] = local_Configuracao
 
     return render_template('conf.html')
+
+
+@app.route('/addradio', methods=['GET', 'POST'])
+def addradio():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    local_radios = session['radios']
+    if request.method == 'POST':
+        radio_adicionado = {'nome': request.form.get('nome'), 'sensibilidade': float(request.form.get('sens')),
+                            'faixa_de_freq': [20, 20000],
+                            'potencia': {'tipo': 1, 'valor': [float(request.form.get('pott'))]},
+                            'antenas': [{'nome': request.form.get('nomeant'), 'tiopo': 0,
+                                         'ganho': float(request.form.get('gan'))}]}
+
+        local_radios.append(radio_adicionado)
+        session['radios'] = local_radios
+        print(local_radios)
+
+    return render_template('addradio.html')
 
 
 @app.route('/addmapa', methods=['GET', 'POST'])
